@@ -1,0 +1,191 @@
+/*
+ * Sample AmigaOS 3.1 program with MUI 3.8
+ * Compiled with VBCC
+ */
+
+#include <exec/types.h>
+#include <exec/memory.h>
+#include <dos/dos.h>
+#include <intuition/intuition.h>
+#include <libraries/mui.h>
+
+#include <proto/exec.h>
+#include <proto/dos.h>
+#include <proto/intuition.h>
+#include <proto/muimaster.h>
+#include <proto/utility.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "utils/filelogger.h"
+#include "utils/windowlogger.h"
+#include "views/mainmenu.h"
+#include "widgets/listwidgets.h"
+#include "views/aboutview.h"
+#include "widgets/pteimagepanel.h"
+
+/* MUI Libraries */
+struct Library *MUIMasterBase = NULL;
+
+/* Function prototypes */
+BOOL init_libs(void);
+void cleanup_libs(void);
+Object *create_gui(void);
+
+static APTR list, aboutView;
+
+int main(void)
+{
+    APTR app, window, strip, bt1, imagePanel;
+    ULONG sigs = 0;
+    BOOL running = TRUE;
+
+    /* Initialize libraries */
+    if (!init_libs())
+    {
+        printf("Failed to initialize libraries!\n");
+        return RETURN_FAIL;
+    }
+
+    // Initialize
+    fileLoggerInit("papertanks.log");
+
+    // Log messages
+    fileLoggerAddEntry("Application started");
+
+    // Init PTEImagePanel class
+    struct MUI_CustomClass *pteImagePanelClass = createPTEImagePanelClass();
+    if (!pteImagePanelClass)
+    {
+        fileLoggerAddEntry("Failed to create PTEImagePanel class");
+        cleanup_libs();
+        return RETURN_FAIL;
+    }
+    else
+    {
+        fileLoggerAddEntry("PTEImagePanel class created successfully");
+    }
+
+    if (!pteImagePanelClass->mcc_Class)
+    {
+        fileLoggerAddEntry("Failed to create PTEImagePanel class instance");
+        cleanup_libs();
+        return RETURN_FAIL;
+    }
+    else
+    {
+        char logMessage[256];
+        fileLoggerAddEntry("PTEImagePanel class instance created successfully");
+        loggerFormatMessage(logMessage, "PTEImagePanel: mcc Address: 0x%08lx", (ULONG)pteImagePanelClass->mcc_Class);
+        fileLoggerAddEntry(logMessage);
+    }
+
+    /* clang-format off */
+
+    /* Create the GUI */
+     app = ApplicationObject,
+        MUIA_Application_Title, "Paper Tanks Editor",
+        MUIA_Application_Version, "$VER: 0.1.0",
+        MUIA_Application_Copyright, "(C) 2025 Matt Swart",
+        MUIA_Application_Author, "Matt Swart",
+        MUIA_Application_Description, "Paper Tanks Editor.",
+        MUIA_Application_Base, "SHOWHIDE",        
+
+        MUIA_Application_Window, window = WindowObject,
+
+            MUIA_Window_Title, "Paper Tanks Editor",
+            MUIA_Window_ID, MAKE_ID('T', 'A', 'N', 'K'),
+            MUIA_Window_Width, 800,
+            MUIA_Window_Height, 600,
+            MUIA_Window_Menustrip, strip = MUI_MakeObject(MUIO_MenustripNM, MainMenuData, MUIO_MenustripNM_CommandKeyCheck),
+
+                WindowContents, VGroup, GroupFrame,
+                    
+                    Child, VGroup,
+                        Child, RectangleObject, End, // Top area placeholder
+                        //Child, MUI_NewObject(MUIC_Rectangle, NULL, MUIA_Width, 100, MUIA_Height, 50, MUIA_Background, MUII_ButtonBack, TAG_END),                        
+                        // Child, bt1 = SimpleButton("About"),
+                        // Create the custom object with attributes in MUI style                       
+                        Child, NewObject(pteImagePanelClass->mcc_Class, NULL, TAG_END),
+                    End,
+
+                    Child, VGroup, GroupFrameT("Status Messages"),                    
+                        Child, list = List2("Ready...", 35),
+                    End,                   
+
+                End,                
+            End,        
+        End;
+
+    /* clang-format on */
+
+    if (!app)
+    {
+        printf("Failed to create MUI application!\n");
+        cleanup_libs();
+        return RETURN_FAIL;
+    }
+
+    /* Set up notifications */
+    DoMethod(window, MUIM_Notify, MUIA_Window_CloseRequest, TRUE, app, 2, MUIM_Application_ReturnID, MUIV_Application_ReturnID_Quit);
+
+    /* Open the window */
+    set(window, MUIA_Window_Open, TRUE);
+
+    /* Init UI Status Messages */
+    windowLoggerInit(list);
+
+    /* Main event loop */
+    while (running)
+    {
+        ULONG id = DoMethod(app, MUIM_Application_NewInput, &sigs);
+
+        switch (id)
+        {
+        case MUIV_Application_ReturnID_Quit:
+        case MEN_QUIT:
+            fileLoggerAddEntry("Quite Called");
+            running = FALSE;
+            break;
+        case MEN_ABOUT:
+            createAboutView(app);
+            break;
+        }
+
+        if (running && sigs)
+            Wait(sigs);
+    }
+
+    /* Clean up */
+    set(window, MUIA_Window_Open, FALSE);
+    MUI_DisposeObject(app);
+    cleanup_libs();
+    // Close when done
+    fileLoggerClose();
+
+    return RETURN_OK;
+}
+
+BOOL init_libs(void)
+{
+    /* Open MUI Master Library */
+    MUIMasterBase = OpenLibrary(MUIMASTER_NAME, MUIMASTER_VMIN);
+    if (!MUIMasterBase)
+    {
+        printf("Cannot open %s version %d or higher!\n", MUIMASTER_NAME, MUIMASTER_VMIN);
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+void cleanup_libs(void)
+{
+    if (MUIMasterBase)
+    {
+        CloseLibrary(MUIMasterBase);
+        MUIMasterBase = NULL;
+    }
+}

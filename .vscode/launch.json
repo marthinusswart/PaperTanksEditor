@@ -1,0 +1,39 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Build and Debug (UAE)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/${fileBasenameNoExtension}",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                {
+                    "name": "VBCC",
+                    "value": "${env:VBCC}"
+                }
+            ],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "Build VBCC Project",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "Transfer to Amiga",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/transfer.js",
+            "console": "integratedTerminal",
+            "args": ["${workspaceFolder}/bin/${fileBasenameNoExtension}"]
+        }
+    ]
+}

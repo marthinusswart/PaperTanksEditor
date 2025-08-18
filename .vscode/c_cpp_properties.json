@@ -1,0 +1,35 @@
+{
+    "configurations": [
+        {
+            "name": "VBCC AmigaOS 3.1 Docker",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/include",
+                "/opt/vbcc/targets/m68k-amigaos/include/**",
+                "/opt/vbcc/targets/m68k-amigaos/include/proto",
+                "/opt/vbcc/targets/m68k-amigaos/include/inline",
+                "/opt/sdk/NDK3.2/Include_H/**",
+                "/opt/sdk/MUI_3.8/C/Include/**"
+            ],
+            "defines": [
+                "__AMIGA__",
+                "__MC68000__",
+                "__VBCC__",
+                "AMIGA",
+                "__amigaos3__",
+                "_M68K_"
+            ],
+            "compilerPath": "/opt/vbcc/bin/vc",
+            "cStandard": "c99",
+            "cppStandard": "c++98",
+            "intelliSenseMode": "gcc-x64",
+            "compilerArgs": [
+                "+aos68k",
+                "-I${workspaceFolder}/include",
+                "-I/opt/sdk/NDK3.2/Include_H",
+                "-I/opt/sdk/MUI_3.8/C/Include"
+            ]
+        }
+    ],
+    "version": 4
+}

@@ -1,0 +1,116 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build VBCC Project",
+            "type": "shell",
+            "command": "vc",
+            "args": [
+                "+aos68k",
+                "-I/opt/code/include",
+                "-I/opt/vbcc/targets/m68k-amigaos/include",
+                "-I/opt/sdk/NDK3.2/Include_H",
+                "-I/opt/sdk/MUI_3.8/C/Include",
+                "-L/opt/vbcc/targets/m68k-amigaos/lib",
+                "-L/opt/sdk/NDK3.2/lib",
+                "-L/opt/sdk/MUI_3.8",
+                "-L/opt/sdk/MUI_3.8/lib",
+                "-L/opt/sdk/MUI_3.8/Lib",
+                "-lamiga",
+                "-lauto",
+                "-lutility",
+                "-lmui",
+                "-o",
+                "/opt/code/bin/${fileBasenameNoExtension}",
+                "/opt/code/src/${fileBasenameNoExtension}.c"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": {
+                "owner": "vbcc",
+                "fileLocation": [
+                    "absolute"
+                ],
+                "pattern": {
+                    "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "severity": 4,
+                    "message": 5
+                }
+            }
+        },
+        {
+            "label": "Debug - Show NDK 3.2 Structure",
+            "type": "shell",
+            "command": "sh",
+            "args": [
+                "-c",
+                "echo 'NDK 3.2 directory structure:' && ls -la /opt/sdk/NDK3.2/ && echo '\\nNDK 3.2 Include_H contents:' && ls -la /opt/sdk/NDK3.2/Include_H/ | head -15 && echo '\\nNDK 3.2 lib contents:' && ls -la /opt/sdk/NDK3.2/lib/ && echo '\\nMUI 3.8 directory structure:' && find /opt/sdk/MUI_3.8 -name '*.lib' -o -name '*.a' -o -name '*mui*'"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always"
+            }
+        },
+        {
+            "label": "Build with Makefile",
+            "type": "shell",
+            "command": "make",
+            "args": [],
+            "options": {
+                "cwd": "/opt/code"
+            },
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Build Basic (No MUI)",
+            "type": "shell",
+            "command": "make",
+            "args": [
+                "basic"
+            ],
+            "options": {
+                "cwd": "/opt/code"
+            },
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Clean Build",
+            "type": "shell",
+            "command": "rm",
+            "args": [
+                "-rf",
+                "/opt/code/bin/*",
+                "/opt/code/obj/*"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "silent"
+            }
+        }
+    ]
+}

@@ -1,0 +1,53 @@
+{
+    "name": "VBCC AmigaOS 3.1 Development",
+    "image": "walkero/docker4amigavbcc:latest-m68k",
+    // Set the working directory inside the container
+    "workspaceFolder": "/opt/code",
+    // Mount your project files
+    "mounts": [
+        "source=${localWorkspaceFolder},target=/opt/code,type=bind,consistency=cached"
+    ],
+    // Set environment variables
+    "containerEnv": {
+        "VBCC": "/opt/vbcc",
+        "PATH": "/opt/vbcc/bin:${containerEnv:PATH}",
+        "NDK_INC": "/opt/sdk/NDK_3.9/Include/include_h",
+        "NDK_LIB": "/opt/sdk/NDK_3.9/Include/linker_libs",
+        "NDK32_INC": "/opt/sdk/NDK3.2/Include_H",
+        "NDK32_LIB": "/opt/sdk/NDK3.2/lib",
+        "MUI38_INC": "/opt/sdk/MUI_3.8/C/Include",
+        "MUI50_INC": "/opt/sdk/MUI_5.0/C/include"
+    },
+    // Install additional VS Code extensions in the container
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-vscode.cpptools",
+                "ms-vscode.cpptools-extension-pack",
+                "donjayamanne.githistory",
+                "eamodio.gitlens",
+                "EditorConfig.EditorConfig",
+                "Gruntfuggly.todo-tree",
+                "prb28.amiga-assembly",
+                "ms-vscode.makefile-tools",
+                "formulahendry.code-runner"
+            ],
+            "settings": {
+                "C_Cpp.default.configurationProvider": "ms-vscode.cpptools",
+                "C_Cpp.default.intelliSenseMode": "gcc-x64",
+                "files.encoding": "iso88591",
+                "files.eol": "\n",
+                "editor.tabSize": 4,
+                "editor.insertSpaces": true,
+                "terminal.integrated.defaultProfile.linux": "bash",
+                "makefile.configureOnOpen": false
+            }
+        }
+    },
+    // Create necessary directories on container creation
+    "postCreateCommand": "mkdir -p /opt/code/bin /opt/code/obj /opt/code/src /opt/code/include",
+    // Keep container running
+    "shutdownAction": "none",
+    // Use the existing user in the container (vbcc user with ID 1000)
+    "remoteUser": "vbcc"
+}

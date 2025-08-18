@@ -1,0 +1,47 @@
+services:
+  # AmigaOS 3.1 with VBCC (m68k target)
+  vbcc-m68k:
+    image: "walkero/docker4amigavbcc:latest-m68k"
+    volumes:
+      - "../:/opt/code"
+      - "./ext_sdk:/opt/ext_sdk" # Optional: for additional SDKs
+    environment:
+      # Pre-configured environment variables in the image:
+      # VBCC: /opt/vbcc
+      # PATH: /opt/vbcc/bin
+      # NDK_INC: /opt/sdk/NDK_3.9/Include/include_h
+      # NDK_LIB: /opt/sdk/NDK_3.9/Include/linker_libs
+      # NDK32_INC: /opt/sdk/NDK3.2/Include_H
+      # NDK32_LIB: /opt/sdk/NDK3.2/lib
+      # MUI38_INC: /opt/sdk/MUI_3.8/C/Include
+      # MUI50_INC: /opt/sdk/MUI_5.0/C/include
+      # TCP_INC: /opt/sdk/Roadshow-SDK/include
+      # NET_INC: /opt/sdk/Roadshow-SDK/netinclude
+      # AMISSL_INC: /opt/sdk/AmiSSL/include
+      # POSIXLIB_INC: /opt/sdk/PosixLib/include
+      # SQLITE_INC: /opt/sdk/sqlite/include
+
+      # Custom user/group IDs (optional - defaults to 1000)
+      VBCC_USER_ID: "1000"
+      VBCC_GROUP_ID: "1000"
+    working_dir: /opt/code
+    tty: true
+    stdin_open: true
+
+  # Alternative: AmigaOS 4 with VBCC (for comparison)
+  # vbcc-ppc:
+  #   image: 'walkero/docker4amigavbcc:latest-ppc'
+  #   volumes:
+  #     - './code:/opt/code'
+  #   working_dir: /opt/code
+  #   tty: true
+  #   stdin_open: true
+
+  # Alternative: MorphOS with VBCC (for comparison)
+  # vbcc-mos:
+  #   image: 'walkero/docker4amigavbcc:latest-mos'
+  #   volumes:
+  #     - './code:/opt/code'
+  #   working_dir: /opt/code
+  #   tty: true
+  #   stdin_open: true
