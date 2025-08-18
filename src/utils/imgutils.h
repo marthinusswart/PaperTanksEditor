@@ -8,6 +8,7 @@
 #include <string.h>
 #include <proto/muimaster.h>
 #include "windowlogger.h"
+#include "filelogger.h"
 
 BOOL loadILBMToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData);
 BOOL loadILBMToBitmapObject2(CONST_STRPTR filename);

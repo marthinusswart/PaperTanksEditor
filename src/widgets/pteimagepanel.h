@@ -13,6 +13,8 @@
 #include <proto/exec.h>
 #include <string.h>
 #include <stdarg.h>
+#include <graphics/gfx.h>
+#include <graphics/rastport.h>
 
 #include "../utils/windowlogger.h"
 #include "../utils/filelogger.h"
@@ -22,15 +24,36 @@
 /*** MUI Defines ***/
 
 #define MUIC_PTEImagePanel "PTEImagePanel.mcc"
-#define PTEImagePanelObject MUI_NewObject(MUIC_PTEImagePanel
+
+#ifndef _rp
+#define _rp(obj) (((struct MUIP_Draw *)msg)->rp)
+#endif
+
+extern struct MUI_CustomClass *pteImagePanelClass;
+#define PTEImagePanelObject NewObject(pteImagePanelClass->mcc_Class, NULL
+
+/* clang-format off */
+
+#define PTEA_BorderColor    0x30400001
+#define PTEA_DrawBorder     0x30400002
+#define PTEA_BorderMargin   0x30400003
+#define PTEA_ImageData      0x30400004
+#define PTEA_ImageWidth     0x30400005
+#define PTEA_ImageHeight    0x30400006
+
+/* clang-format on */
 
 struct PTEImagePanelData
 {
-    ULONG barPos;
-    ULONG nbarPos;
-    ULONG ibarPos;
+    BYTE borderColor;
+    BOOL drawBorder;
+    WORD borderMargin;
+    UBYTE *imageData;
+    WORD imageWidth;
+    WORD imageHeight;
 };
 
+extern void initializePTEImagePanel(void);
 extern struct MUI_CustomClass *createPTEImagePanelClass(void);
 
 #endif

@@ -56,7 +56,9 @@ int main(void)
     fileLoggerAddEntry("Application started");
 
     // Init PTEImagePanel class
-    struct MUI_CustomClass *pteImagePanelClass = createPTEImagePanelClass();
+    initializePTEImagePanel();
+    // struct MUI_CustomClass *pteImagePanelClass = createPTEImagePanelClass();
+
     if (!pteImagePanelClass)
     {
         fileLoggerAddEntry("Failed to create PTEImagePanel class");
@@ -82,6 +84,10 @@ int main(void)
         fileLoggerAddEntry(logMessage);
     }
 
+    /* Init Image Load */
+    UBYTE **outImageData = NULL;
+    loadILBMToBitmapObject("PROGDIR:assets/disk-space.ilbm", &outImageData);
+
     /* clang-format off */
 
     /* Create the GUI */
@@ -104,11 +110,19 @@ int main(void)
                 WindowContents, VGroup, GroupFrame,
                     
                     Child, VGroup,
-                        Child, RectangleObject, End, // Top area placeholder
-                        //Child, MUI_NewObject(MUIC_Rectangle, NULL, MUIA_Width, 100, MUIA_Height, 50, MUIA_Background, MUII_ButtonBack, TAG_END),                        
-                        // Child, bt1 = SimpleButton("About"),
-                        // Create the custom object with attributes in MUI style                       
-                        Child, NewObject(pteImagePanelClass->mcc_Class, NULL, TAG_END),
+                        // Child, RectangleObject, MUIA_Width, 100, MUIA_Height, 50, MUIA_Background, MUII_ButtonBack, MUIA_Frame, "box", End, 
+                        // Create the custom object with attributes in MUI style                                               
+                        Child, PTEImagePanelObject,  
+                            MUIA_Width, 100,
+                            MUIA_Height, 50,
+                            MUIA_Background, MUII_ButtonBack,
+                            PTEA_BorderColor, 1,
+                            PTEA_BorderMargin, 1,
+                            PTEA_DrawBorder, TRUE,
+                            PTEA_ImageData, outImageData,
+                            PTEA_ImageHeight, 256,
+                            PTEA_ImageWidth, 256,
+                        End,
                     End,
 
                     Child, VGroup, GroupFrameT("Status Messages"),                    
