@@ -69,6 +69,7 @@ IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg)
     WORD imageHeight = 0;
     WORD imageWidth = 0;
     BOOL enableRGB = FALSE;
+    ILBMPalette *ilbmPalette = NULL;
 
     // Parse tag list for custom attributes
     struct TagItem *tags = msg->ops_AttrList;
@@ -117,6 +118,10 @@ IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg)
             enableRGB = (BOOL)walk->ti_Data;
             break;
 
+        case PTEA_ILBMPalette:
+            ilbmPalette = (ILBMPalette *)walk->ti_Data;
+            break;
+
         default:
             break;
         }
@@ -131,6 +136,7 @@ IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg)
     data->imageHeight = imageHeight;
     data->imageWidth = imageWidth;
     data->enableRGB = enableRGB;
+    data->ilbmPalette = ilbmPalette;
 
     return (ULONG)obj;
 }

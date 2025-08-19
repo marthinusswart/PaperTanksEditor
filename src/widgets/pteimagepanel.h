@@ -22,6 +22,7 @@
 #include "../utils/filelogger.h"
 #include "../../include/SDI_compiler.h"
 #include "../../include/SDI_hook.h"
+#include "../graphics/graphics.h"
 
 /*** MUI Defines ***/
 
@@ -43,7 +44,7 @@ extern struct MUI_CustomClass *pteImagePanelClass;
 #define PTEA_ImageWidth     0x30400005
 #define PTEA_ImageHeight    0x30400006
 #define PTEA_EnableRGB      0x30400007
-#define PTEA_ILBMPalete     0x30400008
+#define PTEA_ILBMPalette    0x30400008
 
 /* clang-format on */
 
@@ -56,7 +57,7 @@ struct PTEImagePanelData
     WORD imageWidth;
     WORD imageHeight;
     BOOL enableRGB;
-    // ILBMPalette *ilbmPalette;
+    ILBMPalette *ilbmPalette;
 };
 
 extern void initializePTEImagePanel(void);

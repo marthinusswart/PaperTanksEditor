@@ -137,6 +137,7 @@ int main(void)
                             PTEA_ImageHeight, 256,
                             PTEA_ImageWidth, 256,
                             PTEA_EnableRGB, FALSE,
+                            PTEA_ILBMPalette, outILBMPalette,
                         End,
                     End,
 
