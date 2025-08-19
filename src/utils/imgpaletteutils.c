@@ -140,8 +140,8 @@ UBYTE createPenMapping(
         systemPalette[3].r = 144; systemPalette[3].g = 220; systemPalette[3].b = 113; // Light green
         
         // Try to get actual system palette values (will override defaults if successful)
-        sprintf(logMessage, "Attempting to read system palette colors\n");
-        fileLoggerAddEntry(logMessage);
+        sprintf(logMessage, "Attempting to read system palette colors");
+        fileLoggerAddDebugEntry(logMessage);
         
         // Retrieve system palette colors - Read up to 32 colors for efficiency
         ULONG colorsToRead = (systemColorCount > 32) ? 32 : systemColorCount;
@@ -150,8 +150,8 @@ UBYTE createPenMapping(
         BOOL screenPaletteReadSuccess = FALSE;
         struct Screen *scr = LockPubScreen(NULL);
         if (scr) {
-            sprintf(logMessage, "Reading palette from current screen's ViewPort\n");
-            fileLoggerAddEntry(logMessage);
+            sprintf(logMessage, "Reading palette from current screen's ViewPort");
+            fileLoggerAddDebugEntry(logMessage);
             
             // Use screen's ColorMap if available
             if (scr->ViewPort.ColorMap) {
@@ -172,8 +172,8 @@ UBYTE createPenMapping(
         
         // Option 2: Fall back to provided ColorMap if screen method fails
         if (!screenPaletteReadSuccess && colorMap) {
-            sprintf(logMessage, "Using provided ColorMap\n");
-            fileLoggerAddEntry(logMessage);
+            sprintf(logMessage, "Using provided ColorMap");
+            fileLoggerAddDebugEntry(logMessage);
             
             for (ULONG i = 0; i < colorsToRead; i++) {
                 // GetRGB4 returns 4-bit per component (0-15 range)
@@ -187,14 +187,14 @@ UBYTE createPenMapping(
         }
         
         // Log a few system palette colors
-        sprintf(logMessage, "System palette sample (first 8 colors):\n");
-        fileLoggerAddEntry(logMessage);
+        sprintf(logMessage, "System palette sample (first 8 colors):");
+        fileLoggerAddDebugEntry(logMessage);
         for (ULONG i = 0; i < 8 && i < colorsToRead; i++)
         {
             ULONG rgb = GetRGB4(colorMap, i);
-            sprintf(logMessage, "  System Pen %lu: RGB4=0x%04lx ? RGB(%u,%u,%u)\n", 
+            sprintf(logMessage, "  System Pen %lu: RGB4=0x%04lx ? RGB(%u,%u,%u)", 
                     i, rgb, systemPalette[i].r, systemPalette[i].g, systemPalette[i].b);
-            fileLoggerAddEntry(logMessage);
+            fileLoggerAddDebugEntry(logMessage);
         }
         
         // Number of unique colors we've found
@@ -210,9 +210,9 @@ UBYTE createPenMapping(
             
             // For diagnostic purposes, note any particularly green colors
             if (isColorCategory(r, g, b, 'G') && i < 16) {
-                sprintf(logMessage, "Source color %lu is GREEN: RGB(%u,%u,%u)\n", 
+                sprintf(logMessage, "Source color %lu is GREEN: RGB(%u,%u,%u)", 
                         i, r, g, b);
-                fileLoggerAddEntry(logMessage);
+                fileLoggerAddDebugEntry(logMessage);
             }
             
             // If optimizing duplicates, check if we've seen this color before
@@ -287,14 +287,14 @@ UBYTE createPenMapping(
                     UBYTE mappedR = systemPalette[bestMatch].r;
                     UBYTE mappedG = systemPalette[bestMatch].g;
                     UBYTE mappedB = systemPalette[bestMatch].b;
-                    sprintf(logMessage, "  GREEN source pen %lu: RGB(%u,%u,%u) ? system pen %lu: RGB(%u,%u,%u)\n", 
+                    sprintf(logMessage, "  GREEN source pen %lu: RGB(%u,%u,%u) ? system pen %lu: RGB(%u,%u,%u)", 
                             i, r, g, b, (ULONG)bestMatch, mappedR, mappedG, mappedB);
-                    fileLoggerAddEntry(logMessage);
+                    fileLoggerAddDebugEntry(logMessage);
                     
                     // Alert if green was mapped to something that's not green
                     if (!isColorCategory(mappedR, mappedG, mappedB, 'G')) {
-                        sprintf(logMessage, "  WARNING: Green color mapped to non-green system pen!\n");
-                        fileLoggerAddEntry(logMessage);
+                        sprintf(logMessage, "  WARNING: Green color mapped to non-green system pen!");
+                        fileLoggerAddDebugEntry(logMessage);
                     }
                 }
                 
@@ -312,15 +312,15 @@ UBYTE createPenMapping(
         }
         
         // Log how many unique colors we processed
-        sprintf(logMessage, "Mapped %lu source colors to system palette using color matching\n", 
+        sprintf(logMessage, "Mapped %lu source colors to system palette using color matching", 
                 numColors);
-        fileLoggerAddEntry(logMessage);
+        fileLoggerAddDebugEntry(logMessage);
         
         if (optimizeDuplicates)
         {
-            sprintf(logMessage, "Found %u unique colors out of %lu in palette\n", 
+            sprintf(logMessage, "Found %u unique colors out of %lu in palette", 
                     nextUniqueIndex, numColors);
-            fileLoggerAddEntry(logMessage);
+            fileLoggerAddDebugEntry(logMessage);
         }
         
         return (optimizeDuplicates) ? nextUniqueIndex : numColors;
@@ -402,14 +402,14 @@ UBYTE createPenMapping(
         // Log how many unique colors we found
         if (optimizeDuplicates)
         {
-            sprintf(logMessage, "Found %u unique colors out of %lu in palette\n", 
+            sprintf(logMessage, "Found %u unique colors out of %lu in palette", 
                     nextUniqueIndex, numColors);
-            fileLoggerAddEntry(logMessage);
+            fileLoggerAddDebugEntry(logMessage);
         }
         else
         {
-            sprintf(logMessage, "Using simple 1:1 pen mapping (offset by 1)\n");
-            fileLoggerAddEntry(logMessage);
+            sprintf(logMessage, "Using simple 1:1 pen mapping (offset by 1)");
+            fileLoggerAddDebugEntry(logMessage);
         }
         
         return (optimizeDuplicates) ? nextUniqueIndex : numColors;
@@ -452,23 +452,23 @@ void logPaletteInfo(
     
     if (colorRegs && numColors > 0)
     {
-        sprintf(logMessage, "Color registers available with %lu colors\n", numColors);
-        fileLoggerAddEntry(logMessage);
+        sprintf(logMessage, "Color registers available with %lu colors", numColors);
+        fileLoggerAddDebugEntry(logMessage);
         
         for (ULONG i = 0; i < samplesToLog; i++)
         {
             UBYTE r = colorRegs[i*3];      // Red
             UBYTE g = colorRegs[i*3 + 1];  // Green  
             UBYTE b = colorRegs[i*3 + 2];  // Blue
-            sprintf(logMessage, "  Color %lu: R=%u G=%u B=%u (0x%02x%02x%02x)\n", 
+            sprintf(logMessage, "  Color %lu: R=%u G=%u B=%u (0x%02x%02x%02x)", 
                     i, r, g, b, r, g, b);
-            fileLoggerAddEntry(logMessage);
+            fileLoggerAddDebugEntry(logMessage);
         }
     }
     else if (colorTable && numColors > 0)
     {
-        sprintf(logMessage, "Color table available with %lu colors\n", numColors);
-        fileLoggerAddEntry(logMessage);
+        sprintf(logMessage, "Color table available with %lu colors", numColors);
+        fileLoggerAddDebugEntry(logMessage);
         
         for (ULONG i = 0; i < samplesToLog; i++)
         {
@@ -476,23 +476,23 @@ void logPaletteInfo(
             UBYTE r = (rgb >> 16) & 0xFF;
             UBYTE g = (rgb >> 8) & 0xFF;
             UBYTE b = rgb & 0xFF;
-            sprintf(logMessage, "  Color %lu: R=%u G=%u B=%u (0x%06lx)\n", 
+            sprintf(logMessage, "  Color %lu: R=%u G=%u B=%u (0x%06lx)", 
                     i, r, g, b, rgb);
-            fileLoggerAddEntry(logMessage);
+            fileLoggerAddDebugEntry(logMessage);
         }
     }
     else
     {
-        sprintf(logMessage, "No color information available, using default palette\n");
-        fileLoggerAddEntry(logMessage);
+        sprintf(logMessage, "No color information available, using default palette");
+        fileLoggerAddDebugEntry(logMessage);
         
         // Log the default palette we'll use
         ULONG palSize = numColors > 16 ? 16 : numColors;
         for (ULONG i = 0; i < palSize; i++)
         {
-            sprintf(logMessage, "  Default Color %lu: R=%u G=%u B=%u\n", 
+            sprintf(logMessage, "  Default Color %lu: R=%u G=%u B=%u", 
                     i, defaultPalette[i].r, defaultPalette[i].g, defaultPalette[i].b);
-            fileLoggerAddEntry(logMessage);
+            fileLoggerAddDebugEntry(logMessage);
         }
     }
 }
@@ -506,8 +506,8 @@ void logPenMappingInfo(
 {
     char logMessage[256];
     
-    sprintf(logMessage, "Pen mapping (source ? system):\n");
-    fileLoggerAddEntry(logMessage);
+    sprintf(logMessage, "Pen mapping (source ? system):");
+    fileLoggerAddDebugEntry(logMessage);
     
     // Log all pen mappings if we have 16 or fewer, otherwise log first 16
     ULONG mapSamples = numColors > 16 ? 16 : numColors;
@@ -520,13 +520,13 @@ void logPenMappingInfo(
             UBYTE r = colorRegs[i*3];
             UBYTE g = colorRegs[i*3 + 1];
             UBYTE b = colorRegs[i*3 + 2];
-            sprintf(logMessage, "  Pen %lu: RGB(%u,%u,%u) ? System Pen %u\n", 
+            sprintf(logMessage, "  Pen %lu: RGB(%u,%u,%u) ? System Pen %u", 
                     i, r, g, b, penMap[i]);
         }
         else
         {
-            sprintf(logMessage, "  Pen %lu ? System Pen %u\n", i, penMap[i]);
+            sprintf(logMessage, "  Pen %lu ? System Pen %u", i, penMap[i]);
         }
-        fileLoggerAddEntry(logMessage);
+        fileLoggerAddDebugEntry(logMessage);
     }
 }

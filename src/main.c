@@ -53,6 +53,7 @@ int main(void)
 
     // Initialize
     fileLoggerInit("papertanks.log");
+    fileLoggerSetDebug(TRUE);
 
     // Log messages
     fileLoggerAddEntry("Application started");
@@ -130,6 +131,7 @@ int main(void)
                             PTEA_ImageData, outImageData,
                             PTEA_ImageHeight, 256,
                             PTEA_ImageWidth, 256,
+                            PTEA_EnableRGB, TRUE,
                         End,
                     End,
 

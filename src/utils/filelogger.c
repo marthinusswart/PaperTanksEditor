@@ -26,6 +26,7 @@ void fileLoggerInit(const char *filename)
     // Initialize the structure
     fileLogger->logFile = 0;
     fileLogger->isInitialized = FALSE;
+    fileLogger->isDebug = FALSE;
 
     // Clear the path buffer
     for (i = 0; i < 256; i++)
@@ -220,6 +221,24 @@ void fileLoggerClose(void)
     }
 }
 
+void fileLoggerSetDebug(BOOL enableDebug)
+{
+    if (fileLogger && fileLogger->isInitialized)
+    {
+        fileLogger->isDebug = enableDebug;
+        
+        // Log the debug state change
+        if (enableDebug)
+        {
+            fileLoggerAddEntry("Debug logging enabled");
+        }
+        else
+        {
+            fileLoggerAddEntry("Debug logging disabled");
+        }
+    }
+}
+
 BOOL loggerFormatMessage(char *outBuf, const char *format, ...)
 {
     if (!outBuf || !format)
@@ -232,4 +251,39 @@ BOOL loggerFormatMessage(char *outBuf, const char *format, ...)
 
     va_end(args);
     return TRUE;
+}
+
+void fileLoggerAddDebugEntry(const char *entry)
+{
+    if (!fileLogger || !fileLogger->isInitialized)
+    {
+        return;
+    }
+    
+    // Only log if debug mode is enabled
+    if (fileLogger->isDebug)
+    {
+        char debugEntry[512];
+        LONG i, j;
+        
+        // Add "DEBUG: " prefix to the message
+        const char *prefix = "DEBUG: ";
+        
+        // Copy prefix
+        for (i = 0; prefix[i] && i < 510; i++)
+        {
+            debugEntry[i] = prefix[i];
+        }
+        
+        // Copy the actual message
+        for (j = 0; entry[j] && (i + j) < 510; j++)
+        {
+            debugEntry[i + j] = entry[j];
+        }
+        
+        debugEntry[i + j] = '\0';
+        
+        // Log using the standard entry function
+        fileLoggerAddEntry(debugEntry);
+    }
 }

@@ -15,6 +15,8 @@
 #include <stdarg.h>
 #include <graphics/gfx.h>
 #include <graphics/rastport.h>
+#include <graphics/view.h>
+#include <proto/graphics.h>
 
 #include "../utils/windowlogger.h"
 #include "../utils/filelogger.h"
@@ -40,6 +42,7 @@ extern struct MUI_CustomClass *pteImagePanelClass;
 #define PTEA_ImageData      0x30400004
 #define PTEA_ImageWidth     0x30400005
 #define PTEA_ImageHeight    0x30400006
+#define PTEA_EnableRGB      0x30400007
 
 /* clang-format on */
 
@@ -51,6 +54,7 @@ struct PTEImagePanelData
     UBYTE *imageData;
     WORD imageWidth;
     WORD imageHeight;
+    BOOL enableRGB;
 };
 
 extern void initializePTEImagePanel(void);
