@@ -14,34 +14,46 @@ BOOL loadILBMToBitmapObjectRGB2(CONST_STRPTR filename)
     return loadILBMToBitmapObjectRGB(filename, &outImageData);
 }
 
-BOOL loadILBMToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ILBMPalette *outPalette)
+BOOL loadILBMToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ILBMPalette **outPalette)
 {
     Object *dto = NULL;
     struct BitMap *bmp = NULL;
-    struct BitMapHeader *bmHeader = NULL;
-    struct Screen *scr = NULL;
-    struct ColorMap *colorMap = NULL;
     ULONG *colorTable = NULL;
     UBYTE *colorRegs = NULL;
     ULONG numColors = 0;
     char logMessage[256];
+    BOOL success = FALSE; // Track overall success for proper cleanup
+    ILBMPalette *palette = NULL;
 
-    snprintf(logMessage, sizeof(logMessage), "Loading ILBM (improved) from %s\n", filename);
+    snprintf(logMessage, sizeof(logMessage), "Loading ILBM (improved) from %s", filename);
     fileLoggerAddEntry(logMessage);
 
     if (!outImageData)
     {
-        snprintf(logMessage, sizeof(logMessage), "Failed to load ILBM: outImageData is NULL for %s\n", filename);
+        snprintf(logMessage, sizeof(logMessage), "Failed to load ILBM: outImageData is NULL for %s", filename);
         fileLoggerAddEntry(logMessage);
         return FALSE;
     }
     *outImageData = NULL;
 
-    /* Initialize palette if provided */
+    // Allocate and initialize palette if requested
     if (outPalette)
     {
-        initILBMPalette(outPalette);
+        *outPalette = NULL; // Ensure null in case of error
+        palette = (ILBMPalette *)malloc(sizeof(ILBMPalette));
+        if (!palette)
+        {
+            snprintf(logMessage, sizeof(logMessage), "Failed to allocate memory for palette structure");
+            fileLoggerAddEntry(logMessage);
+            return FALSE;
+        }
+        initILBMPalette(palette);
+        sprintf(logMessage, "Allocated new palette structure");
+        fileLoggerAddEntry(logMessage);
     }
+
+    sprintf(logMessage, "Using direct palette mode - no screen ColorMap needed");
+    fileLoggerAddEntry(logMessage);
 
     // Open with specific attributes to get color information
     dto = NewDTObject(filename,
@@ -51,7 +63,7 @@ BOOL loadILBMToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ILBMPal
 
     if (!dto)
     {
-        snprintf(logMessage, sizeof(logMessage), "Failed to load DTO for %s\n", filename);
+        snprintf(logMessage, sizeof(logMessage), "Failed to load DTO for %s", filename);
         fileLoggerAddEntry(logMessage);
         return FALSE;
     }
@@ -89,23 +101,7 @@ BOOL loadILBMToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ILBMPal
 
     if (!bmp)
     {
-        sprintf(logMessage, "Bitmap not loaded from %s\n", filename);
-        fileLoggerAddEntry(logMessage);
-        DisposeDTObject(dto);
-        return FALSE;
-    }
-
-    // Get color map from the default public screen (A1200 with AGA chipset)
-    scr = LockPubScreen(NULL);
-    if (scr)
-    {
-        colorMap = scr->ViewPort.ColorMap;
-        sprintf(logMessage, "Using ColorMap from default public screen\n");
-        fileLoggerAddEntry(logMessage);
-    }
-    else
-    {
-        sprintf(logMessage, "Warning: Could not lock public screen for ColorMap\n");
+        sprintf(logMessage, "Bitmap not loaded from %s", filename);
         fileLoggerAddEntry(logMessage);
         DisposeDTObject(dto);
         return FALSE;
@@ -114,74 +110,47 @@ BOOL loadILBMToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ILBMPal
     if (bmp)
     {
         // Use sprintf instead of snprintf (not available in AmigaOS 3.1)
-        sprintf(logMessage, "Bitmap loaded: %lux%lu pixels, %lu bitplanes, %lu colors, ModeID: 0x%08lx\n",
+        sprintf(logMessage, "Bitmap loaded: %lux%lu pixels, %lu bitplanes, %lu colors, ModeID: 0x%08lx",
                 bmp_width, bmp_height, bmp_depth, numColors, modeid);
         fileLoggerAddEntry(logMessage);
     }
 
-    // Define a fallback palette for common Amiga colors
-    // This will be used if we can't get the colors from the file
-    struct
-    {
-        UBYTE r, g, b;
-    } defaultPalette[16] = {
-        {0, 0, 0},       // 0: Black
-        {255, 255, 255}, // 1: White
-        {255, 0, 0},     // 2: Red
-        {0, 255, 0},     // 3: Green
-        {0, 0, 255},     // 4: Blue
-        {255, 255, 0},   // 5: Yellow
-        {0, 255, 255},   // 6: Cyan
-        {255, 0, 255},   // 7: Magenta
-        {170, 170, 170}, // 8: Light gray
-        {102, 102, 102}, // 9: Dark gray
-        {255, 128, 128}, // 10: Light red
-        {128, 255, 128}, // 11: Light green
-        {128, 128, 255}, // 12: Light blue
-        {255, 128, 0},   // 13: Orange
-        {128, 0, 128},   // 14: Purple
-        {128, 128, 0}    // 15: Brown
-    };
-
-    // Log color information if available
-    logPaletteInfo(colorRegs, numColors, colorTable);
-
     // Save palette information if requested
-    if (outPalette)
+    if (outPalette && palette)
     {
-        outPalette->numColors = numColors;
-        outPalette->colorTable = colorTable; // Just store the reference (owned by datatype)
+        palette->numColors = numColors;
+        palette->colorTable = colorTable; // Just store the reference (owned by datatype)
 
         // Make a deep copy of the color registers if available
         if (colorRegs && numColors > 0)
         {
             ULONG colorRegsSize = numColors * 3; // RGB triplets
-            outPalette->colorRegs = (UBYTE *)malloc(colorRegsSize);
+            palette->colorRegs = (UBYTE *)malloc(colorRegsSize);
 
-            if (outPalette->colorRegs)
+            if (palette->colorRegs)
             {
                 // Copy the color registers
-                memcpy(outPalette->colorRegs, colorRegs, colorRegsSize);
-                outPalette->allocated = TRUE; // We allocated this memory
+                memcpy(palette->colorRegs, colorRegs, colorRegsSize);
+                palette->allocated = TRUE; // We allocated this memory
 
-                sprintf(logMessage, "Copied %lu colors (%lu bytes) to output palette\n",
+                sprintf(logMessage, "Copied %lu colors (%lu bytes) to output palette",
                         numColors, colorRegsSize);
                 fileLoggerAddEntry(logMessage);
             }
             else
             {
-                sprintf(logMessage, "Failed to allocate memory for color registers\n");
+                sprintf(logMessage, "Failed to allocate memory for color registers");
                 fileLoggerAddEntry(logMessage);
                 // Continue without copying - just use the reference
-                outPalette->colorRegs = colorRegs;
-                outPalette->allocated = FALSE;
+                palette->colorRegs = colorRegs;
+                palette->allocated = FALSE;
             }
         }
         else
         {
             // No color registers available
-            outPalette->colorRegs = NULL;
-            outPalette->allocated = FALSE;
+            palette->colorRegs = NULL;
+            palette->allocated = FALSE;
         }
     }
 
@@ -206,20 +175,21 @@ BOOL loadILBMToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ILBMPal
         InitRastPort(&tempRP);
         tempRP.BitMap = bmp;
 
-        // Create a mapping table from source pens to system pens
+        // Create a 1:1 identity mapping table - no remapping
         UBYTE penMap[256];
+        for (ULONG i = 0; i < 256; i++)
+        {
+            penMap[i] = i; // Direct 1:1 mapping
+        }
 
-        // Create the pen mapping, optimizing for duplicate colors and using ColorMap for accurate matches
-        UBYTE uniqueColorCount = createPenMapping(penMap, colorRegs, numColors, TRUE, colorMap);
-
-        // Log our pen mappings
-        logPenMappingInfo(penMap, colorRegs, numColors);
+        sprintf(logMessage, "Using direct 1:1 color mapping (no remapping) for high-color display");
+        fileLoggerAddEntry(logMessage);
 
         // Copy pen mapping to output palette if requested
-        if (outPalette)
+        if (outPalette && palette)
         {
-            memcpy(outPalette->penMap, penMap, 256);
-            sprintf(logMessage, "Copied pen mapping to output palette (uniqueColorCount: %u)\n", uniqueColorCount);
+            memcpy(palette->penMap, penMap, 256);
+            sprintf(logMessage, "Copied direct 1:1 pen mapping to output palette");
             fileLoggerAddEntry(logMessage);
         }
 
@@ -239,55 +209,77 @@ BOOL loadILBMToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ILBMPal
         }
 
         *outImageData = imageData; // Store pointer to free later
-        sprintf(logMessage, "Bitmap converted to chunky data with pen remapping (%lu bytes)\n", imageDataSize);
+        sprintf(logMessage, "Bitmap converted to chunky data with pen remapping (%lu bytes)", imageDataSize);
         fileLoggerAddEntry(logMessage);
+
+        // On success, assign the allocated palette to the output pointer
+        if (outPalette && palette)
+        {
+            *outPalette = palette;
+            sprintf(logMessage, "Assigned palette to output pointer");
+            fileLoggerAddEntry(logMessage);
+        }
     }
     else
     {
-        sprintf(logMessage, "Failed to allocate memory for image conversion\n");
+        sprintf(logMessage, "Failed to allocate memory for image conversion");
         fileLoggerAddEntry(logMessage);
     }
 
-    // Clean up
-    if (scr)
-    {
-        UnlockPubScreen(NULL, scr);
-    }
-    DisposeDTObject(dto);
+    // Set success flag based on image data allocation
+    success = (imageData != NULL);
 
     // If image data is NULL, this is a failure - clean up palette
-    if (!imageData && outPalette)
+    if (!success)
     {
-        freeILBMPalette(outPalette);
+        if (palette)
+        {
+            sprintf(logMessage, "Image data allocation failed - cleaning up palette");
+            fileLoggerAddEntry(logMessage);
+            freeILBMPalette(palette);
+            free(palette);
+            if (outPalette)
+            {
+                *outPalette = NULL;
+            }
+        }
     }
 
-    return (imageData != NULL);
+    // Always clean up resources before returning
+    DisposeDTObject(dto);
+
+    return success;
 }
 
 BOOL loadILBMToBitmapObjectRGB(CONST_STRPTR filename, UBYTE **outImageData)
 {
     Object *dto = NULL;
     struct BitMap *bmp = NULL;
-    struct Screen *scr = NULL;
-    struct ColorMap *colorMap = NULL;
     char logMessage[256];
+    BOOL success = FALSE;
+    UBYTE *imageData = NULL;
+    UBYTE *colorRegs = NULL;
+    ULONG numColors = 0;
 
-    snprintf(logMessage, sizeof(logMessage), "Loading ILBM in RGB format from %s\n", filename);
+    snprintf(logMessage, sizeof(logMessage), "Loading ILBM in RGB format from %s", filename);
     fileLoggerAddEntry(logMessage);
 
     if (!outImageData)
     {
-        snprintf(logMessage, sizeof(logMessage), "Failed to load RGB ILBM: outImageData is NULL for %s\n", filename);
+        snprintf(logMessage, sizeof(logMessage), "Failed to load RGB ILBM: outImageData is NULL for %s", filename);
         fileLoggerAddEntry(logMessage);
         return FALSE;
     }
     *outImageData = NULL;
 
-    dto = NewDTObject(filename, DTA_GroupID, GID_PICTURE, TAG_DONE);
+    dto = NewDTObject(filename,
+                      DTA_GroupID, GID_PICTURE,
+                      PDTA_Remap, FALSE, // Don't remap colors
+                      TAG_DONE);
 
     if (!dto)
     {
-        snprintf(logMessage, sizeof(logMessage), "Failed to load DTO for %s\n", filename);
+        snprintf(logMessage, sizeof(logMessage), "Failed to load DTO for %s", filename);
         fileLoggerAddEntry(logMessage);
         return FALSE;
     }
@@ -297,7 +289,12 @@ BOOL loadILBMToBitmapObjectRGB(CONST_STRPTR filename, UBYTE **outImageData)
 
     // Extract bitmap and related information
     struct BitMapHeader *bmhd;
-    GetDTAttrs(dto, PDTA_BitMap, &bmp, PDTA_BitMapHeader, &bmhd, TAG_END);
+    GetDTAttrs(dto,
+               PDTA_BitMap, &bmp,
+               PDTA_BitMapHeader, &bmhd,
+               PDTA_NumColors, &numColors,
+               PDTA_CRegs, &colorRegs, // Raw color registers (RGB triplets)
+               TAG_END);
 
     ULONG bmp_width = 0, bmp_height = 0, bmp_depth = 0;
 
@@ -306,35 +303,27 @@ BOOL loadILBMToBitmapObjectRGB(CONST_STRPTR filename, UBYTE **outImageData)
         bmp_width = bmhd->bmh_Width;
         bmp_height = bmhd->bmh_Height;
         bmp_depth = bmhd->bmh_Depth;
+
+        // Calculate number of colors from bit depth if not provided
+        if (numColors == 0 && bmp_depth > 0)
+        {
+            numColors = 1 << bmp_depth; // 2^depth
+        }
     }
 
     if (!bmp)
     {
-        sprintf(logMessage, "Bitmap not loaded from %s\n", filename);
+        sprintf(logMessage, "Bitmap not loaded from %s", filename);
         fileLoggerAddEntry(logMessage);
         DisposeDTObject(dto);
         return FALSE;
     }
 
-    // Get color map from the default public screen
-    scr = LockPubScreen(NULL);
-    if (scr)
-    {
-        colorMap = scr->ViewPort.ColorMap;
-        sprintf(logMessage, "Using ColorMap from default public screen\n");
-        fileLoggerAddEntry(logMessage);
-    }
-    else
-    {
-        sprintf(logMessage, "Warning: Could not lock public screen for ColorMap\n");
-        fileLoggerAddEntry(logMessage);
-    }
-
-    sprintf(logMessage, "Bitmap loaded: %lux%lu pixels, %lu bitplanes\n", bmp_width, bmp_height, bmp_depth);
+    sprintf(logMessage, "Bitmap loaded: %lux%lu pixels, %lu bitplanes, %lu colors",
+            bmp_width, bmp_height, bmp_depth, numColors);
     fileLoggerAddEntry(logMessage);
 
     // Allocate memory for RGB image data (3 bytes per pixel)
-    UBYTE *imageData = NULL;
     ULONG imageDataSize = bmp_width * bmp_height * 3; // 3 bytes per pixel (R,G,B)
     imageData = (UBYTE *)malloc(imageDataSize);
 
@@ -362,15 +351,14 @@ BOOL loadILBMToBitmapObjectRGB(CONST_STRPTR filename, UBYTE **outImageData)
                 // Read pixel from bitmap (returns pen number)
                 UBYTE pixel = ReadPixel(&tempRP, x, y);
 
-                if (colorMap && pixel < numColors)
+                if (colorRegs && pixel < numColors)
                 {
-                    // Get RGB value from the color map (4 bits per component)
-                    ULONG rgb4 = GetRGB4(colorMap, pixel);
-
-                    // Extract individual components (4 bits each)
-                    UBYTE red = ((rgb4 >> 8) & 0xF) * 17; // Scale 0-15 to 0-255
-                    UBYTE green = ((rgb4 >> 4) & 0xF) * 17;
-                    UBYTE blue = (rgb4 & 0xF) * 17;
+                    // Get RGB values directly from the image's color registers
+                    // colorRegs contains RGB triplets in sequence (R,G,B,R,G,B,...)
+                    ULONG offset = pixel * 3;
+                    UBYTE red = colorRegs[offset];
+                    UBYTE green = colorRegs[offset + 1];
+                    UBYTE blue = colorRegs[offset + 2];
 
                     *pixelPtr++ = red;   // Red
                     *pixelPtr++ = green; // Green
@@ -388,20 +376,19 @@ BOOL loadILBMToBitmapObjectRGB(CONST_STRPTR filename, UBYTE **outImageData)
         }
 
         *outImageData = imageData; // Store pointer to free later
-        sprintf(logMessage, "Bitmap converted to RGB data (%lu bytes)\n", imageDataSize);
+        sprintf(logMessage, "Bitmap converted to RGB data using direct palette (%lu bytes)", imageDataSize);
         fileLoggerAddEntry(logMessage);
+        success = TRUE;
     }
     else
     {
-        sprintf(logMessage, "Failed to allocate memory for RGB image conversion\n");
+        sprintf(logMessage, "Failed to allocate memory for RGB image conversion");
         fileLoggerAddEntry(logMessage);
+        success = FALSE;
     }
 
-    // Clean up
-    if (scr)
-    {
-        UnlockPubScreen(NULL, scr);
-    }
+    // Always clean up resources before returning
     DisposeDTObject(dto);
-    return (imageData != NULL);
+
+    return success;
 }

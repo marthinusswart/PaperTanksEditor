@@ -15,7 +15,7 @@
 #include "graphics.h"
 
 /* Load ILBM image with palette information */
-BOOL loadILBMToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ILBMPalette *outPalette);
+BOOL loadILBMToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ILBMPalette **outPalette);
 BOOL loadILBMToBitmapObject2(CONST_STRPTR filename);
 BOOL loadILBMToBitmapObjectRGB(CONST_STRPTR filename, UBYTE **outImageData);
 BOOL loadILBMToBitmapObjectRGB2(CONST_STRPTR filename);

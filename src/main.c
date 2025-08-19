@@ -93,7 +93,8 @@ int main(void)
     /* Init Image Load */
     fileLoggerAddEntry("Loading standard indexed image...");
     // Try our new improved version of the function
-    if (loadILBMToBitmapObject("PROGDIR:assets/disk-space.ilbm", &outImageData, &outILBMPalette))
+    BOOL loaded = loadILBMToBitmapObject("PROGDIR:assets/disk-space.ilbm", &outImageData, &outILBMPalette);
+    if (loaded)
     {
         fileLoggerAddEntry("Image loaded successfully for display");
     }
@@ -124,7 +125,7 @@ int main(void)
                 WindowContents, VGroup, GroupFrame,
                     
                     Child, VGroup,
-                        // Child, RectangleObject, MUIA_Width, 100, MUIA_Height, 50, MUIA_Background, MUII_ButtonBack, MUIA_Frame, "box", End, 
+                        //Child, RectangleObject, MUIA_Width, 100, MUIA_Height, 50, MUIA_Background, MUII_ButtonBack, MUIA_Frame, "box", End, 
                         // Create the custom object with attributes in MUI style                                               
                         Child, PTEImagePanelObject,  
                             MUIA_Width, 100,
@@ -192,14 +193,22 @@ int main(void)
     set(window, MUIA_Window_Open, FALSE);
     MUI_DisposeObject(app);
 
-    // Free allocated image data
-    if (outImageData)
+    cleanup_libs();
+
+    if (loaded)
     {
-        free(outImageData);
-        outImageData = NULL;
+        if (outImageData)
+        {
+            free(outImageData);
+            fileLoggerAddDebugEntry("Freed ILBM image data");
+        }
+        if (outILBMPalette)
+        {
+            freeILBMPalette(outILBMPalette);
+            fileLoggerAddDebugEntry("Freed ILBM palette");
+        }
     }
 
-    cleanup_libs();
     // Close when done
     fileLoggerClose();
 

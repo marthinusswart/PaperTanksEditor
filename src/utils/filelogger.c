@@ -226,7 +226,7 @@ void fileLoggerSetDebug(BOOL enableDebug)
     if (fileLogger && fileLogger->isInitialized)
     {
         fileLogger->isDebug = enableDebug;
-        
+
         // Log the debug state change
         if (enableDebug)
         {
@@ -259,30 +259,30 @@ void fileLoggerAddDebugEntry(const char *entry)
     {
         return;
     }
-    
+
     // Only log if debug mode is enabled
     if (fileLogger->isDebug)
     {
         char debugEntry[512];
         LONG i, j;
-        
+
         // Add "DEBUG: " prefix to the message
         const char *prefix = "DEBUG: ";
-        
+
         // Copy prefix
         for (i = 0; prefix[i] && i < 510; i++)
         {
             debugEntry[i] = prefix[i];
         }
-        
+
         // Copy the actual message
         for (j = 0; entry[j] && (i + j) < 510; j++)
         {
             debugEntry[i + j] = entry[j];
         }
-        
+
         debugEntry[i + j] = '\0';
-        
+
         // Log using the standard entry function
         fileLoggerAddEntry(debugEntry);
     }
