@@ -93,7 +93,7 @@ int main(void)
     /* Init Image Load */
     fileLoggerAddEntry("Loading standard indexed image...");
     // Try our new improved version of the function
-    BOOL loaded = loadILBMToBitmapObject("PROGDIR:assets/disk-space.ilbm", &outImageData, &outILBMPalette);
+    BOOL loaded = loadILBMToBitmapObjectRGB3("PROGDIR:assets/disk-space.ilbm", &outImageData, &outILBMPalette);
     if (loaded)
     {
         fileLoggerAddEntry("Image loaded successfully for display");
@@ -137,7 +137,7 @@ int main(void)
                             PTEA_ImageData, outImageData,
                             PTEA_ImageHeight, 256,
                             PTEA_ImageWidth, 256,
-                            PTEA_EnableRGB, FALSE,
+                            PTEA_EnableRGB, TRUE,
                             PTEA_ILBMPalette, outILBMPalette,
                         End,
                     End,
