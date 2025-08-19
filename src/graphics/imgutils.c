@@ -291,7 +291,7 @@ BOOL loadILBMToBitmapObjectRGB3(CONST_STRPTR filename, UBYTE **outImageData, ILB
         fileLoggerAddEntry(logMessage);
     }
 
-    sprintf(logMessage, "Using RGB mode for high-color display");
+    sprintf(logMessage, "Using RGB mode for 24-bit desktop environment");
     fileLoggerAddEntry(logMessage);
 
     dto = NewDTObject(filename,
@@ -426,7 +426,8 @@ BOOL loadILBMToBitmapObjectRGB3(CONST_STRPTR filename, UBYTE **outImageData, ILB
         InitRastPort(&tempRP);
         tempRP.BitMap = bmp;
 
-        // Read pixels from bitmap and convert to RGB format
+        // Read pixels from bitmap and directly convert to RGB format
+        // Optimized for 24-bit environment - no need for depth checking
         for (y = 0; y < bmp_height; y++)
         {
             for (x = 0; x < bmp_width; x++)
@@ -436,20 +437,21 @@ BOOL loadILBMToBitmapObjectRGB3(CONST_STRPTR filename, UBYTE **outImageData, ILB
 
                 if (colorRegs && pixel < numColors)
                 {
-                    // Get RGB values directly from the image's color registers
+                    // Get full 24-bit RGB values directly from the image's color registers
                     // colorRegs contains RGB triplets in sequence (R,G,B,R,G,B,...)
                     ULONG offset = pixel * 3;
                     UBYTE red = colorRegs[offset];
                     UBYTE green = colorRegs[offset + 1];
                     UBYTE blue = colorRegs[offset + 2];
 
+                    // Store full 24-bit color values
                     *pixelPtr++ = red;   // Red
                     *pixelPtr++ = green; // Green
                     *pixelPtr++ = blue;  // Blue
                 }
                 else
                 {
-                    // Fallback grayscale based on pen value
+                    // Unlikely fallback for invalid pixel values - use grayscale
                     UBYTE gray = (pixel < numColors) ? (pixel * 255 / (numColors - 1)) : 0;
                     *pixelPtr++ = gray; // Red
                     *pixelPtr++ = gray; // Green
@@ -464,11 +466,11 @@ BOOL loadILBMToBitmapObjectRGB3(CONST_STRPTR filename, UBYTE **outImageData, ILB
         if (outPalette && palette)
         {
             *outPalette = palette;
-            sprintf(logMessage, "Assigned palette to output pointer for RGB mode");
+            sprintf(logMessage, "Assigned palette to output pointer for 24-bit mode");
             fileLoggerAddEntry(logMessage);
         }
 
-        sprintf(logMessage, "Bitmap converted to RGB data using direct palette (%lu bytes)", imageDataSize);
+        sprintf(logMessage, "Bitmap converted to 24-bit RGB data (%lu bytes)", imageDataSize);
         fileLoggerAddEntry(logMessage);
         success = TRUE;
     }
