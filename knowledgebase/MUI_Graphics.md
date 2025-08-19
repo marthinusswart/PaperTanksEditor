@@ -630,3 +630,444 @@ if (win && win->WScreen) {
 
 This is definitely the preferred approach for high-color displays - you get your exact colors without interfering with other applications!????????????????
 Sent from my iPhone
+
+# Best Practice
+
+For a 24-bit color desktop on AGA, you actually wouldn't use either `ObtainPen()` or `ObtainBestPen()` in most cases.
+
+**Why pen allocation isn't needed for 24-bit:**
+- In true 24-bit modes, you have direct access to all 16.7 million colors
+- There's no palette to manage - you specify colors directly as RGB values
+- Pen allocation is primarily for palette-based modes (8-bit and lower)
+
+**What to use instead:**
+
+1. **Direct RGB values with graphics functions:**
+```c
+// Set foreground color directly
+SetRGB32(&screen->ViewPort, 0, red << 24, green << 24, blue << 24);
+SetAPen(rp, 0);
+
+// Or use SetRGBColor() if available
+SetRGBColor(rp, red, green, blue);
+```
+
+2. **WritePixelArray() family functions:**
+```c
+// Write pixels directly with RGB values
+WritePixelArray(rgbArray, 0, 0, width * 3,  // 3 bytes per pixel
+                rp, x, y, width, height, RECTFMT_RGB);
+```
+
+3. **CyberGraphX functions (if available):**
+```c
+// Direct pixel writing in hi-color/true-color modes
+WriteRGBPixel(rp, x, y, rgbColor);
+```
+
+**Exception - when you might still use pen functions:**
+- If you're working with MUI gadgets that expect pen numbers
+- For compatibility with older code that uses pen-based drawing
+- When interfacing with parts of the system that still use palette indices
+
+But for direct image drawing in your custom MUI class on a 24-bit desktop, you'd work directly with RGB values rather than going through the pen allocation system.
+
+For AGA hi-color environments (assuming 15/16-bit or higher color depths), here are the optimized best practices:
+
+## Image Format and Loading
+
+**Target formats:**
+- 15-bit RGB (5-5-5): 32,768 colors
+- 16-bit RGB (5-6-5): 65,536 colors  
+- 24-bit RGB: 16.7 million colors
+- Use chunky pixel format when possible for direct manipulation
+
+## Palette Management for Hi-Color
+
+**Use LoadRGB32() for full color precision:**
+```c
+// Load 32-bit palette entries
+ULONG palette32[] = {
+    (numColors << 16),
+    0x00000000, 0x00000000, 0x00000000,  // Color 0
+    0xFF000000, 0x00000000, 0x00000000,  // Color 1 (red)
+    // ... more colors
+    0x00000000  // Terminator
+};
+
+LoadRGB32(&screen->ViewPort, palette32);
+```
+
+**Dynamic color allocation:**
+```c
+// Obtain best matching colors for hi-color modes
+ULONG colorSpec[] = {
+    OBP_Precision, PRECISION_EXACT,
+    OBP_FailIfBad, FALSE,
+    TAG_DONE
+};
+
+LONG pen = ObtainBestPen(&screen->ViewPort.ColorMap,
+                          red << 24, green << 24, blue << 24,
+                          colorSpec);
+```
+
+You're right to question that - I made an error. `ObtainBestPenA()` doesn't exist in the standard Amiga libraries.
+
+The correct function is `ObtainBestPen()` from graphics.library:
+
+```c
+LONG ObtainBestPen(struct ColorMap *cm, ULONG r, ULONG g, ULONG b, ...);
+```
+
+Usage example:
+```c
+LONG pen = ObtainBestPen(&screen->ViewPort.ColorMap,
+                         red << 24,    // 32-bit red component
+                         green << 24,  // 32-bit green component  
+                         blue << 24,   // 32-bit blue component
+                         OBP_Precision, PRECISION_EXACT,
+                         OBP_FailIfBad, FALSE,
+                         TAG_DONE);
+```
+
+The related functions that actually exist in graphics.library are:
+- `ObtainBestPen()` - obtain best matching pen
+- `ObtainPen()` - obtain a specific pen
+- `ReleasePen()` - release a pen when done
+
+Thanks for catching that mistake! In hi-color AGA modes, you'd typically use `ObtainBestPen()` for dynamic color allocation when you need specific colors that aren't already in your palette.
+
+## Custom Draw Method for Hi-Color
+
+```c
+IPTR MyClass_Draw(Class *cl, Object *obj, struct MUIP_Draw *msg)
+{
+    struct MyClassData *data = INST_DATA(cl, obj);
+    struct RastPort *rp;
+    UWORD depth;
+    
+    DoSuperMethodA(cl, obj, (Msg)msg);
+    
+    if (!(msg->flags & MADF_DRAWOBJECT))
+        return 0;
+        
+    rp = _rp(obj);
+    depth = GetBitMapAttr(rp->BitMap, BMA_DEPTH);
+    
+    if (MUI_BeginRefresh(muiRenderInfo(obj), 0))
+    {
+        // Choose drawing method based on screen depth
+        if (depth >= 15) {
+            DrawHiColorImage(rp, data->image, _mleft(obj), _mtop(obj));
+        } else {
+            // Fallback for lower depths
+            DrawDitheredImage(rp, data->image, _mleft(obj), _mtop(obj));
+        }
+        
+        MUI_EndRefresh(muiRenderInfo(obj), 0);
+    }
+    
+    return 0;
+}
+```
+
+## Hi-Color Pixel Drawing Techniques
+
+**Direct chunky pixel writing (AGA):**
+```c
+void DrawHiColorImage(struct RastPort *rp, struct ImageData *img, 
+                      WORD x, WORD y)
+{
+    UWORD *pixelData = (UWORD *)img->data;  // 16-bit pixels
+    
+    // Use WriteChunkyPixels if available (OS 3.1+)
+    if (CyberGfxBase) {
+        WriteLUTPixelArray(pixelData, 0, 0, img->width * 2,
+                          rp, x, y, img->width, img->height,
+                          CTABFMT_XRGB1555);  // or CTABFMT_RGB565
+    } else {
+        // Fallback to WritePixelArray8 with conversion
+        WritePixelArray8(rp, x, y, x + img->width - 1, y + img->height - 1,
+                        img->chunkyData, &img->tempRP);
+    }
+}
+```
+
+**Optimized bitmap blitting for hi-color:**
+```c
+void BlitHiColorImage(struct RastPort *destRP, struct ImageData *img,
+                      WORD destX, WORD destY)
+{
+    struct BitMap *srcBM;
+    UWORD depth = GetBitMapAttr(destRP->BitMap, BMA_DEPTH);
+    
+    // Create source bitmap matching destination depth
+    srcBM = AllocBitMap(img->width, img->height, depth,
+                        BMF_DISPLAYABLE | BMF_CLEAR,
+                        destRP->BitMap);
+    
+    if (srcBM) {
+        struct RastPort tempRP;
+        InitRastPort(&tempRP);
+        tempRP.BitMap = srcBM;
+        
+        // Convert and write image data to temporary bitmap
+        WritePixelArray8(&tempRP, 0, 0, img->width - 1, img->height - 1,
+                        img->data, NULL);
+        
+        // Fast blit to destination
+        BltBitMapRastPort(srcBM, 0, 0, destRP, destX, destY,
+                         img->width, img->height, 0xC0);
+        
+        FreeBitMap(srcBM);
+    }
+}
+```
+
+## AGA Hi-Color Optimizations
+
+**Enable 64-bit fetch mode:**
+```c
+// Set AGA-specific register for better performance
+struct Custom *custom = (struct Custom *)0xdff000;
+custom->fmode = 0x000F;  // Enable 64-bit fetch, all sprites
+```
+
+**Use AGA blitter enhancements:**
+```c
+void OptimizedBlit(struct RastPort *rp, struct ImageData *img, 
+                   WORD x, WORD y)
+{
+    struct BlitNode *blit;
+    
+    blit = AllocBlit(AREAWIDE, AREAHEIGHT, 8, 8);
+    if (blit) {
+        // Configure for AGA hi-color blitting
+        blit->bn_FMode = 0x000F;  // 64-bit fetch
+        blit->bn_BltCon0 = 0x09F0;  // Copy operation
+        
+        QBlit(blit);
+        WaitBlit();
+        FreeBlit(blit);
+    }
+}
+```
+
+## Image Data Management
+
+**Structure for hi-color image data:**
+```c
+struct HiColorImage {
+    UWORD *rgb565_data;     // 16-bit RGB565 pixels
+    ULONG *rgb888_data;     // 24-bit RGB pixels
+    UWORD width, height;
+    UBYTE format;           // RGB565, RGB555, RGB888
+    struct BitMap *cachedBM; // Pre-converted bitmap
+};
+```
+
+**Efficient format conversion:**
+```c
+// Convert 24-bit RGB to 16-bit RGB565
+UWORD RGB24to565(UBYTE r, UBYTE g, UBYTE b)
+{
+    return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+}
+
+// Convert 24-bit RGB to 15-bit RGB555
+UWORD RGB24to555(UBYTE r, UBYTE g, UBYTE b)
+{
+    return ((r & 0xF8) << 7) | ((g & 0xF8) << 2) | (b >> 3);
+}
+```
+
+## Performance Optimization
+
+**Pre-convert images at load time:**
+```c
+void PrepareHiColorImage(struct HiColorImage *img, UWORD screenDepth)
+{
+    // Convert to target format once
+    if (screenDepth == 16) {
+        ConvertToRGB565(img);
+    } else if (screenDepth == 15) {
+        ConvertToRGB555(img);
+    }
+    
+    // Cache as bitmap for fastest blitting
+    img->cachedBM = CreateBitmapFromImage(img, screenDepth);
+}
+```
+
+**Use memory-mapped I/O for direct pixel access:**
+```c
+void DirectPixelDraw(struct RastPort *rp, UWORD color, WORD x, WORD y)
+{
+    UWORD *frameBuffer = GetFrameBufferAddress(rp);
+    ULONG offset = y * GetBytesPerRow(rp) + (x * 2);  // 2 bytes per pixel
+    
+    frameBuffer[offset >> 1] = color;
+}
+```
+
+This approach maximizes AGA's hi-color capabilities while maintaining efficient drawing performance in your MUI custom class.
+
+For 16-bit desktops, it depends on the specific implementation, but generally **yes** - you'd use direct RGB writes rather than pen allocation.
+
+**16-bit color modes on AGA:**
+- **RGB565**: 5 bits red, 6 bits green, 5 bits blue (65,536 colors)
+- **RGB555**: 5 bits each for RGB + 1 unused bit (32,768 colors)
+
+**Best approach for 16-bit:**
+
+1. **Direct RGB writing (preferred):**
+```c
+// WritePixelArray with 16-bit format
+WritePixelArray(rgb16Array, 0, 0, width * 2,  // 2 bytes per pixel
+                rp, x, y, width, height, RECTFMT_RGB15);
+// or RECTFMT_RGB16 depending on format
+```
+
+2. **CyberGraphX functions (if available):**
+```c
+// Direct 16-bit pixel writing
+UWORD rgb16 = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3); // RGB565
+WriteRGBPixel(rp, x, y, rgb16);
+```
+
+3. **WriteLUTPixelArray for converted data:**
+```c
+WriteLUTPixelArray(pixelArray, 0, 0, width * 2,
+                   rp, x, y, width, height,
+                   CTABFMT_XRGB1555);  // or CTABFMT_RGB565
+```
+
+**Why not pen allocation:**
+- 16-bit modes typically don't use palettes - colors are encoded directly in the pixel values
+- With 32K-65K available colors, there's no practical palette to manage
+- Direct RGB specification is more efficient and accurate
+
+**Exception:**
+Some AGA 16-bit implementations might still use a form of palette/CLUT, but this would be transparent to your application - you'd still specify RGB values and the system handles any internal conversion.
+
+So yes, same approach as 24-bit: work directly with RGB values rather than pen allocation.
+
+**No, you don't need to load or use the palette from the bitmap file** for 16-bit or 24-bit modes.
+
+**Why palettes are irrelevant in hi-color modes:**
+- 16/24-bit modes store color information directly in the pixel data
+- Each pixel contains its own RGB color values
+- There's no color lookup table (CLUT) being used
+
+**What you should do instead:**
+
+1. **Extract the actual pixel RGB data:**
+```c
+// Convert palette-indexed pixels to direct RGB values
+for (int i = 0; i < width * height; i++) {
+    UBYTE paletteIndex = sourcePixels[i];
+    
+    // Use the palette to get RGB values
+    UBYTE r = palette[paletteIndex].red;
+    UBYTE g = palette[paletteIndex].green;  
+    UBYTE b = palette[paletteIndex].blue;
+    
+    // Convert to 16-bit RGB565 for direct storage
+    rgb16Pixels[i] = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+}
+```
+
+2. **Or load pre-converted hi-color images:**
+- Save images in 16-bit or 24-bit formats directly
+- Skip the palette conversion step entirely
+- Store RGB values ready for direct pixel writing
+
+**When you DO need the palette:**
+- Only during the conversion process (to translate indexed pixels to RGB)
+- If you're supporting fallback to 8-bit modes
+- For compatibility with palette-based drawing operations
+
+**Best practice:**
+Convert palette-based images to direct RGB format once during loading, then discard the palette. This gives you the fastest drawing performance since you're not doing palette lookups during rendering.
+
+So the palette is just a temporary conversion tool, not something you need to "apply" to the screen in hi-color modes.
+
+**Exactly correct!** You've got it perfectly.
+
+**The process:**
+
+1. **Load 8-bit image + palette:**
+```c
+// 8-bit image has palette indices: [5, 12, 3, 7, ...]
+// Palette has RGB values: palette[5] = {255, 0, 0}, palette[12] = {0, 255, 0}, etc.
+```
+
+2. **Convert using palette (one-time operation):**
+```c
+for (int i = 0; i < width * height; i++) {
+    UBYTE paletteIndex = image8bit[i];        // e.g., index 5
+    
+    // Look up actual RGB color from palette
+    UBYTE r = palette[paletteIndex].red;      // 255
+    UBYTE g = palette[paletteIndex].green;    // 0  
+    UBYTE b = palette[paletteIndex].blue;     // 0
+    
+    // Store as direct 24-bit RGB
+    image24bit[i * 3 + 0] = r;               // Red channel
+    image24bit[i * 3 + 1] = g;               // Green channel  
+    image24bit[i * 3 + 2] = b;               // Blue channel
+}
+
+// Palette is no longer needed - can be freed
+FreeMem(palette, paletteSize);
+```
+
+3. **Draw directly with RGB data:**
+```c
+WritePixelArray(image24bit, 0, 0, width * 3,
+                rp, x, y, width, height, RECTFMT_RGB);
+// No palette lookup needed during drawing!
+```
+
+**Key point:** The palette is just a "translation table" to convert the indexed colors to their actual RGB values. Once translated, you have the true colors and can throw away the translation table.
+
+This gives you the best of both worlds: smaller file sizes (8-bit indexed) but fast rendering performance (direct RGB drawing).
+
+**Exactly right!** Keeping the image data in 24-bit format won't break anything on a 16-bit desktop.
+
+**What happens when you draw 24-bit data on 16-bit screen:**
+
+1. **The system handles conversion automatically:**
+```c
+// This will work fine - system converts on-the-fly
+WritePixelArray(image24bit, 0, 0, width * 3,
+                rp, x, y, width, height, RECTFMT_RGB);
+```
+
+2. **Color quantization occurs during display:**
+- 24-bit RGB (8-8-8) gets automatically reduced to 16-bit (5-6-5 or 5-5-5)
+- You lose some color precision, but it's usually barely noticeable
+- The conversion happens in the graphics driver/hardware
+
+**Impacts:**
+
+**Memory:** 
+- 24-bit: 3 bytes per pixel
+- 16-bit: 2 bytes per pixel  
+- 50% more memory usage with 24-bit
+
+**Performance:**
+- Slightly slower due to more data being transferred
+- Extra conversion overhead during blitting
+- Usually not a significant bottleneck
+
+**Visual quality:**
+- Minimal difference in most images
+- Gradients might show slight banding
+- Most users won't notice
+
+**Best practice:**
+If you're only targeting one screen depth, convert to match. But if you need to support multiple depths (16-bit and 24-bit desktops), keeping 24-bit data is perfectly fine - let the system handle the conversion rather than maintaining multiple format copies.
+
+So yes, it's more of an optimization than a requirement!
