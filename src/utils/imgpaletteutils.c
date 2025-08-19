@@ -4,7 +4,60 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include <exec/types.h>
+#include <proto/exec.h>
+#include <proto/graphics.h>
+#include <proto/intuition.h>
+#include <clib/alib_protos.h>
 #include "imgpaletteutils.h"
+
+/* Helper function to determine if a color is primarily in a specific category */
+static BOOL isColorCategory(UBYTE r, UBYTE g, UBYTE b, UBYTE category)
+{
+    /* Calculate intensity and dominance of each channel */
+    ULONG total = r + g + b;
+    ULONG threshold = total / 5;  /* 20% intensity threshold */
+    
+    /* Avoid division by zero */
+    if (total < 30) return FALSE;  /* Very dark colors treated as neutral */
+    
+    /* Use integer math with scaling for comparisons (130% = 13/10 = multiply by 13 and compare with 10*other) */
+    switch (category) {
+        case 'R':  /* Red dominant */
+            return (r*10 > g*13 && r*10 > b*13 && r > threshold);
+        case 'G':  /* Green dominant */
+            return (g*10 > r*13 && g*10 > b*13 && g > threshold);
+        case 'B':  /* Blue dominant */
+            return (b*10 > r*13 && b*10 > g*13 && b > threshold);
+        case 'Y':  /* Yellow (red+green) */
+            return (r*10 > b*15 && g*10 > b*15 && r > threshold && g > threshold);
+        case 'C':  /* Cyan (green+blue) */
+            return (g*10 > r*15 && b*10 > r*15 && g > threshold && b > threshold);
+        case 'M':  /* Magenta (red+blue) */
+            return (r*10 > g*15 && b*10 > g*15 && r > threshold && b > threshold);
+        case 'W':  /* White/Light gray */
+            return (r > 192 && g > 192 && b > 192);
+        case 'K':  /* Black/Dark gray */
+            return (r < 64 && g < 64 && b < 64);
+        case 'N':  /* Neutral/Gray */
+            return (abs(r-g) < 30 && abs(g-b) < 30 && abs(r-b) < 30);
+    }
+    return FALSE;
+}
+
+/* Calculate perceptually weighted color distance */
+static ULONG perceptualColorDistance(UBYTE r1, UBYTE g1, UBYTE b1, UBYTE r2, UBYTE g2, UBYTE b2)
+{
+    /* Apply perceptual weights (human eye is more sensitive to green) */
+    LONG dr = (LONG)r1 - r2;
+    LONG dg = (LONG)g1 - g2;
+    LONG db = (LONG)b1 - b2;
+    
+    /* Weighted Euclidean distance - emphasizes green channel */
+    /* These weights are based on human perception research */
+    return (dr*dr*3 + dg*dg*6 + db*db*2) / 11;
+}
 
 // Create a pen mapping table from source image colors to system pens
 UBYTE createPenMapping(
@@ -116,6 +169,13 @@ UBYTE createPenMapping(
             UBYTE b = colorRegs[i*3 + 2];
             BOOL foundMatch = FALSE;
             
+            // For diagnostic purposes, note any particularly green colors
+            if (isColorCategory(r, g, b, 'G') && i < 16) {
+                sprintf(logMessage, "Source color %lu is GREEN: RGB(%u,%u,%u)\n", 
+                        i, r, g, b);
+                fileLoggerAddEntry(logMessage);
+            }
+            
             // If optimizing duplicates, check if we've seen this color before
             if (optimizeDuplicates && nextUniqueIndex > 0)
             {
@@ -143,13 +203,22 @@ UBYTE createPenMapping(
                 // Find closest color in system palette
                 for (ULONG j = 0; j < colorsToRead; j++)
                 {
-                    // Calculate color distance (using simple Euclidean distance)
-                    LONG dr = (LONG)r - systemPalette[j].r;
-                    LONG dg = (LONG)g - systemPalette[j].g;
-                    LONG db = (LONG)b - systemPalette[j].b;
+                    // Check if color categories match for the most distinct color types
+                    // This ensures greens map to greens, reds to reds, etc.
+                    if (isColorCategory(r, g, b, 'G') && !isColorCategory(systemPalette[j].r, systemPalette[j].g, systemPalette[j].b, 'G'))
+                        continue;  // Skip if source is green but system color isn't
+                        
+                    if (isColorCategory(r, g, b, 'R') && !isColorCategory(systemPalette[j].r, systemPalette[j].g, systemPalette[j].b, 'R'))
+                        continue;  // Skip if source is red but system color isn't
+                        
+                    if (isColorCategory(r, g, b, 'B') && !isColorCategory(systemPalette[j].r, systemPalette[j].g, systemPalette[j].b, 'B'))
+                        continue;  // Skip if source is blue but system color isn't
                     
-                    // Square of Euclidean distance
-                    ULONG distance = dr*dr + dg*dg + db*db;
+                    // Calculate perceptual color distance with emphasis on green preservation
+                    ULONG distance = perceptualColorDistance(r, g, b, 
+                                                         systemPalette[j].r, 
+                                                         systemPalette[j].g, 
+                                                         systemPalette[j].b);
                     
                     if (distance < minDistance)
                     {
@@ -160,6 +229,22 @@ UBYTE createPenMapping(
                 
                 // Map to the closest system pen (add 1 since system pens start at 1)
                 penMap[i] = bestMatch + 1;
+                
+                // For diagnostic purposes, log what green colors got mapped to
+                if (isColorCategory(r, g, b, 'G') && i < 16) {
+                    UBYTE mappedR = systemPalette[bestMatch].r;
+                    UBYTE mappedG = systemPalette[bestMatch].g;
+                    UBYTE mappedB = systemPalette[bestMatch].b;
+                    sprintf(logMessage, "  GREEN source pen %lu: RGB(%u,%u,%u) ? system pen %u: RGB(%u,%u,%u)\n", 
+                            i, r, g, b, bestMatch+1, mappedR, mappedG, mappedB);
+                    fileLoggerAddEntry(logMessage);
+                    
+                    // Alert if green was mapped to something that's not green
+                    if (!isColorCategory(mappedR, mappedG, mappedB, 'G')) {
+                        sprintf(logMessage, "  WARNING: Green color mapped to non-green system pen!\n");
+                        fileLoggerAddEntry(logMessage);
+                    }
+                }
                 
                 // Store for future reference if optimizing duplicates
                 if (optimizeDuplicates && nextUniqueIndex < MAX_UNIQUE_COLORS)
