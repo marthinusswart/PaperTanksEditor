@@ -12,6 +12,7 @@ OBJDIR = obj
 UTILSDIR = src/utils
 VIEWSDIR = src/views
 WIDGETSDIR = src/widgets
+GRAPHICSDIR = src/graphics
 
 # Target executable
 TARGET = $(BINDIR)/main
@@ -31,18 +32,20 @@ LDFLAGS = -L/opt/vbcc/targets/m68k-amigaos/lib \
 
 # Source files
 MAIN_SOURCES = $(SRCDIR)/main.c
-UTILS_SOURCES = $(UTILSDIR)/filelogger.c $(UTILSDIR)/imgpaletteutils.c $(UTILSDIR)/imgutils.c $(UTILSDIR)/windowlogger.c
+UTILS_SOURCES = $(UTILSDIR)/filelogger.c $(UTILSDIR)/windowlogger.c
 VIEWS_SOURCES = $(VIEWSDIR)/aboutview.c
 WIDGETS_SOURCES = $(WIDGETSDIR)/pteimagepanel.c
+GRAPHICS_SOURCES = $(GRAPHICSDIR)/graphics.c $(GRAPHICSDIR)/imgpaletteutils.c $(GRAPHICSDIR)/imgutils.c
 
 # Object files
 MAIN_OBJECTS = $(OBJDIR)/main.o
-UTILS_OBJECTS = $(OBJDIR)/utils/filelogger.o $(OBJDIR)/utils/imgpaletteutils.o $(OBJDIR)/utils/imgutils.o $(OBJDIR)/utils/windowlogger.o
+UTILS_OBJECTS = $(OBJDIR)/utils/filelogger.o $(OBJDIR)/utils/windowlogger.o
 VIEWS_OBJECTS = $(OBJDIR)/views/aboutview.o
 WIDGETS_OBJECTS = $(OBJDIR)/widgets/pteimagepanel.o
+GRAPHICS_OBJECTS = $(OBJDIR)/graphics/graphics.o $(OBJDIR)/graphics/imgpaletteutils.o $(OBJDIR)/graphics/imgutils.o
 
 # All objects
-OBJECTS = $(MAIN_OBJECTS) $(UTILS_OBJECTS) $(VIEWS_OBJECTS) $(WIDGETS_OBJECTS)
+OBJECTS = $(MAIN_OBJECTS) $(UTILS_OBJECTS) $(VIEWS_OBJECTS) $(WIDGETS_OBJECTS) $(GRAPHICS_OBJECTS)
 
 # Default target
 all: directories $(TARGET) copy-assets
@@ -80,7 +83,7 @@ show-libs:
 directories:
 	@echo "Creating required directories..."
 	@mkdir -p $(BINDIR) $(BINDIR)/assets
-	@mkdir -p $(OBJDIR) $(OBJDIR)/utils $(OBJDIR)/views $(OBJDIR)/widgets
+	@mkdir -p $(OBJDIR) $(OBJDIR)/utils $(OBJDIR)/views $(OBJDIR)/widgets $(OBJDIR)/graphics
 
 # Link the executable
 $(TARGET): directories $(OBJECTS)
@@ -98,6 +101,11 @@ $(OBJDIR)/utils/%.o: $(UTILSDIR)/%.c
 
 # Compile source files - Views files
 $(OBJDIR)/views/%.o: $(VIEWSDIR)/%.c
+	@mkdir -p $(@D)
+	$(CC) $(CFLAGS) $< -c -o $@
+
+# Compile source files - Graphics files
+$(OBJDIR)/graphics/%.o: $(GRAPHICSDIR)/%.c
 	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) $< -c -o $@
 

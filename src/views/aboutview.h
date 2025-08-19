@@ -12,7 +12,7 @@
 #include "viewtypes.h"
 #include "../widgets/listwidgets.h"
 #include "../widgets/imagewidgets.h"
-#include "../utils/imgutils.h"
+#include "../graphics/imgutils.h"
 #include "../utils/windowlogger.h"
 #include "../utils/filelogger.h"
 

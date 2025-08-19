@@ -25,6 +25,8 @@
 #include "widgets/listwidgets.h"
 #include "views/aboutview.h"
 #include "widgets/pteimagepanel.h"
+#include "graphics/graphics.h"
+#include "graphics/imgutils.h"
 
 /* MUI Libraries */
 struct Library *MUIMasterBase = NULL;
@@ -43,6 +45,7 @@ int main(void)
     BOOL running = TRUE;
     UBYTE *outImageData = NULL;
     UBYTE *outRGBImageData = NULL;
+    ILBMPalette *outILBMPalette = NULL;
 
     /* Initialize libraries */
     if (!init_libs())
@@ -90,7 +93,7 @@ int main(void)
     /* Init Image Load */
     fileLoggerAddEntry("Loading standard indexed image...");
     // Try our new improved version of the function
-    if (loadILBMToBitmapObjectRGB("PROGDIR:assets/disk-space.ilbm", &outImageData))
+    if (loadILBMToBitmapObject("PROGDIR:assets/disk-space.ilbm", &outImageData, &outILBMPalette))
     {
         fileLoggerAddEntry("Image loaded successfully for display");
     }
@@ -133,7 +136,7 @@ int main(void)
                             PTEA_ImageData, outImageData,
                             PTEA_ImageHeight, 256,
                             PTEA_ImageWidth, 256,
-                            PTEA_EnableRGB, TRUE,
+                            PTEA_EnableRGB, FALSE,
                         End,
                     End,
 
