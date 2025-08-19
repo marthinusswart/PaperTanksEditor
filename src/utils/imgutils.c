@@ -13,7 +13,7 @@ BOOL loadILBMToBitmapObjectRGB2(CONST_STRPTR filename)
     return loadILBMToBitmapObjectRGB(filename, &outImageData);
 }
 
-BOOL loadILBMToBitmapObject3(CONST_STRPTR filename, UBYTE **outImageData)
+BOOL loadILBMToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData)
 {
     Object *dto = NULL;
     struct BitMap *bmp = NULL;
@@ -203,7 +203,7 @@ BOOL loadILBMToBitmapObject3(CONST_STRPTR filename, UBYTE **outImageData)
     return (imageData != NULL);
 }
 
-BOOL loadILBMToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData)
+BOOL loadILBMToBitmapObject3(CONST_STRPTR filename, UBYTE **outImageData)
 {
     Object *dto = NULL;
     struct BitMap *bmp = NULL;

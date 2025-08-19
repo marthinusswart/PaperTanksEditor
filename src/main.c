@@ -89,7 +89,7 @@ int main(void)
     /* Init Image Load */
     fileLoggerAddEntry("Loading standard indexed image...");
     // Try our new improved version of the function
-    if (loadILBMToBitmapObject3("PROGDIR:assets/disk-space.ilbm", &outImageData)) {
+    if (loadILBMToBitmapObject("PROGDIR:assets/disk-space.ilbm", &outImageData)) {
         fileLoggerAddEntry("Image loaded successfully for display");
     } else {
         fileLoggerAddEntry("Failed to load image for display");
