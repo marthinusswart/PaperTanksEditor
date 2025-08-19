@@ -86,12 +86,17 @@ int main(void)
 
     /* Init Image Load */
     UBYTE **outImageData = NULL;
+    UBYTE **outRGBImageData = NULL;
+    fileLoggerAddEntry("Loading standard indexed image...");
     loadILBMToBitmapObject("PROGDIR:assets/disk-space.ilbm", &outImageData);
+    
+    fileLoggerAddEntry("Loading RGB format image...");
+    loadILBMToBitmapObjectRGB("PROGDIR:assets/disk-space.ilbm", &outRGBImageData);
 
     /* clang-format off */
 
     /* Create the GUI */
-     app = ApplicationObject,
+    app = ApplicationObject,
         MUIA_Application_Title, "Paper Tanks Editor",
         MUIA_Application_Version, "$VER: 0.1.0",
         MUIA_Application_Copyright, "(C) 2025 Matt Swart",
@@ -175,6 +180,22 @@ int main(void)
     /* Clean up */
     set(window, MUIA_Window_Open, FALSE);
     MUI_DisposeObject(app);
+    
+    // Free allocated image data
+    if (outImageData && *outImageData)
+    {
+        free(*outImageData);
+        *outImageData = NULL;
+        fileLoggerAddEntry("Freed standard image data");
+    }
+    
+    if (outRGBImageData && *outRGBImageData)
+    {
+        free(*outRGBImageData);
+        *outRGBImageData = NULL;
+        fileLoggerAddEntry("Freed RGB image data");
+    }
+    
     cleanup_libs();
     // Close when done
     fileLoggerClose();
