@@ -30,11 +30,42 @@ LDFLAGS = -L/opt/vbcc/targets/m68k-amigaos/lib \
           -lamiga -lauto
 
 # Source files
-SOURCES = $(wildcard $(SRCDIR)/*.c) $(wildcard $(UTILSDIR)/*.c) $(wildcard $(VIEWSDIR)/*.c) $(wildcard $(WIDGETSDIR)/*.c)
-OBJECTS = $(SOURCES:$(SRCDIR)/%.c=$(OBJDIR)/%.o)
+MAIN_SOURCES = $(SRCDIR)/main.c
+UTILS_SOURCES = $(UTILSDIR)/filelogger.c $(UTILSDIR)/imgpaletteutils.c $(UTILSDIR)/imgutils.c $(UTILSDIR)/windowlogger.c
+VIEWS_SOURCES = $(VIEWSDIR)/aboutview.c
+WIDGETS_SOURCES = $(WIDGETSDIR)/pteimagepanel.c
+
+# Object files
+MAIN_OBJECTS = $(OBJDIR)/main.o
+UTILS_OBJECTS = $(OBJDIR)/utils/filelogger.o $(OBJDIR)/utils/imgpaletteutils.o $(OBJDIR)/utils/imgutils.o $(OBJDIR)/utils/windowlogger.o
+VIEWS_OBJECTS = $(OBJDIR)/views/aboutview.o
+WIDGETS_OBJECTS = $(OBJDIR)/widgets/pteimagepanel.o
+
+# All objects
+OBJECTS = $(MAIN_OBJECTS) $(UTILS_OBJECTS) $(VIEWS_OBJECTS) $(WIDGETS_OBJECTS)
 
 # Default target
-all: directories $(TARGET)
+all: directories $(TARGET) copy-assets
+	@echo "========================= NOTICE ============================="
+	@echo "Running requires an Amiga emulator (UAE, FS-UAE, WinUAE, etc.)"
+	@echo "The compiled binary is at: $(TARGET)"
+	@echo "=========================================================="
+
+# Copy assets to bin directory
+copy-assets:
+	@echo "Copying assets..."
+	@if [ -d "assets" ]; then \
+		mkdir -p $(BINDIR)/assets; \
+		if [ -f "assets/disk-space.ilbm" ]; then \
+			cp -f assets/disk-space.ilbm $(BINDIR)/assets/; \
+			echo "  Copied disk-space.ilbm"; \
+		else \
+			echo "  No ILBM assets found"; \
+		fi; \
+		find assets -type f -not -name "*.ilbm" -exec cp -f {} $(BINDIR)/assets/ \; 2>/dev/null || echo "  No other assets to copy"; \
+	else \
+		echo "  Assets directory not found"; \
+	fi
 
 # Show available libraries (for debugging)
 show-libs:
@@ -47,19 +78,38 @@ show-libs:
 
 # Create directories if they don't exist
 directories:
-	@mkdir -p $(BINDIR) $(OBJDIR)
+	@echo "Creating required directories..."
+	@mkdir -p $(BINDIR) $(BINDIR)/assets
+	@mkdir -p $(OBJDIR) $(OBJDIR)/utils $(OBJDIR)/views $(OBJDIR)/widgets
 
 # Link the executable
-$(TARGET): $(OBJECTS)
+$(TARGET): directories $(OBJECTS)
 	$(CC) +aos68k $(OBJECTS) -o $@ $(LDFLAGS)
 
-# Compile source files
+# Compile source files - Main files
 $(OBJDIR)/%.o: $(SRCDIR)/%.c
+	@mkdir -p $(@D)
+	$(CC) $(CFLAGS) $< -c -o $@
+
+# Compile source files - Utils files
+$(OBJDIR)/utils/%.o: $(UTILSDIR)/%.c
+	@mkdir -p $(@D)
+	$(CC) $(CFLAGS) $< -c -o $@
+
+# Compile source files - Views files
+$(OBJDIR)/views/%.o: $(VIEWSDIR)/%.c
+	@mkdir -p $(@D)
+	$(CC) $(CFLAGS) $< -c -o $@
+
+# Compile source files - Widgets files
+$(OBJDIR)/widgets/%.o: $(WIDGETSDIR)/%.c
+	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) $< -c -o $@
 
 # Clean build artifacts
 clean:
-	$(RM) $(OBJECTS) $(TARGET)
+	@echo "Cleaning build artifacts..."
+	@rm -rf $(OBJDIR)/* $(BINDIR)/* 2>/dev/null || true
 
 # Force rebuild
 rebuild: clean all
@@ -86,4 +136,35 @@ debug:
 	@echo "  $(INCDIR)"
 	@echo "  /opt/sdk/MUI_3.8/C/Include"
 
-.PHONY: all clean rebuild directories quick show-libs debug test-headers
+# Build without MUI support
+basic: CFLAGS += -DNO_MUI_SUPPORT
+basic: directories
+	@echo "Building without MUI support..."
+	@$(MAKE) clean
+	@$(MAKE) all CFLAGS="$(CFLAGS) -DNO_MUI_SUPPORT"
+	@mv $(BINDIR)/main $(BINDIR)/main-basic
+	@echo "========================= NOTICE ============================="
+	@echo "Running requires an Amiga emulator (UAE, FS-UAE, WinUAE, etc.)"
+	@echo "The compiled binary is at: $(BINDIR)/main-basic"
+	@echo "=========================================================="
+
+# Information about running in an emulator
+emulator-info:
+	@echo "========================= EMULATOR INFO ============================="
+	@echo "To run this Amiga application, you need an emulator like:"
+	@echo "  - FS-UAE: https://fs-uae.net/"
+	@echo "  - WinUAE: https://www.winuae.net/ (Windows)"
+	@echo "  - UAE: http://uae-emulator.sourceforge.net/"
+	@echo ""
+	@echo "Basic setup instructions:"
+	@echo "1. Install an Amiga emulator"
+	@echo "2. Configure with Workbench 3.1 and at least 2MB Chip RAM + 4MB Fast RAM"
+	@echo "3. Copy the entire 'bin' directory to the emulated Amiga environment"
+	@echo "4. Run the application from AmigaDOS CLI/Shell"
+	@echo ""
+	@echo "The compiled binaries are at:"
+	@echo "  - Main application: $(TARGET)"
+	@echo "  - No-MUI version: $(BINDIR)/main-basic (if built with 'make basic')"
+	@echo "=================================================================="
+
+.PHONY: all clean rebuild directories quick show-libs debug test-headers basic copy-assets emulator-info

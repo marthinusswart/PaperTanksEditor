@@ -44,34 +44,45 @@ all: directories $(TARGET)
 
 # Create directories if they don't exist
 directories:
+	@echo "Creating required directories..."
 	@$(MKDIR) $(BINDIR) $(OBJDIR)
 
 # Link the executable
-$(TARGET): $(OBJECTS)
+$(TARGET): directories $(OBJECTS)
 	$(CC) +aos68k $(OBJECTS) -o $@ $(LDFLAGS)
 
 # Compile paletteanalyzer.c
 $(OBJDIR)/paletteanalyzer.o: $(SRCDIR)/paletteanalyzer.c
+	@$(MKDIR) $(@D)
 	$(CC) $(CFLAGS) $< -c -o $@
 
 # Compile ilbmanalyzer.c
 $(OBJDIR)/ilbmanalyzer.o: $(SRCDIR)/ilbmanalyzer.c
+	@$(MKDIR) $(@D)
 	$(CC) $(CFLAGS) $< -c -o $@
 
 # Compile filelogger.c
 $(OBJDIR)/filelogger.o: $(UTILSDIR)/filelogger.c
+	@$(MKDIR) $(@D)
 	$(CC) $(CFLAGS) $< -c -o $@
 
 # Clean build artifacts
 clean:
-	$(RM) $(OBJECTS) $(TARGET)
+	@echo "Cleaning build artifacts..."
+	@rm -rf $(OBJDIR)/* $(BINDIR)/* 2>/dev/null || true
 
 # Force rebuild
 rebuild: clean all
 
 # Run the analyzer on the default image
-run: all
-	$(TARGET) "$(MAINDIR)/assets/disk-space.ilbm"
+run:
+	@echo "========================= NOTICE ============================="
+	@echo "Running requires an Amiga emulator (UAE, FS-UAE, WinUAE, etc.)"
+	@echo "The compiled binary is at: $(TARGET)"
+	@echo "To use this application:"
+	@echo "1. Copy the binary and assets to your Amiga/emulator environment"
+	@echo "2. Run from AmigaDOS with: paletteanalyzer <ilbm_file_path>"
+	@echo "=========================================================="
 
 # Show command help
 help:
@@ -80,7 +91,24 @@ help:
 	@echo "make         - Build the utility"
 	@echo "make clean   - Remove build files"
 	@echo "make rebuild - Force a complete rebuild"
-	@echo "make run     - Build and run on the default image"
+	@echo "make run     - Show information about running in an emulator"
 	@echo "make help    - Show this help message"
+	@echo "make emulator-info - Show detailed emulator information"
 
-.PHONY: all clean rebuild directories run help
+# Information about running in an emulator
+emulator-info:
+	@echo "========================= EMULATOR INFO ============================="
+	@echo "To run this Amiga application, you need an emulator like:"
+	@echo "  - FS-UAE: https://fs-uae.net/"
+	@echo "  - WinUAE: https://www.winuae.net/ (Windows)"
+	@echo "  - UAE: http://uae-emulator.sourceforge.net/"
+	@echo ""
+	@echo "Basic setup instructions:"
+	@echo "1. Install an Amiga emulator"
+	@echo "2. Configure with Workbench 3.1 and at least 2MB Chip RAM + 2MB Fast RAM"
+	@echo "3. Copy the binary from 'bin/paletteanalyzer' to the emulated Amiga environment"
+	@echo "4. Copy the test image from '../../assets/disk-space.ilbm' to the same location"
+	@echo "5. Run from AmigaDOS CLI/Shell with: paletteanalyzer disk-space.ilbm"
+	@echo "=================================================================="
+
+.PHONY: all clean rebuild directories run help emulator-info

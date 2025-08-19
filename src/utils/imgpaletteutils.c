@@ -22,12 +22,22 @@ static BOOL isColorCategory(UBYTE r, UBYTE g, UBYTE b, UBYTE category)
     /* Avoid division by zero */
     if (total < 30) return FALSE;  /* Very dark colors treated as neutral */
     
-    /* Use integer math with scaling for comparisons (130% = 13/10 = multiply by 13 and compare with 10*other) */
+    /* Use integer math with scaling for comparisons */
     switch (category) {
         case 'R':  /* Red dominant */
             return (r*10 > g*13 && r*10 > b*13 && r > threshold);
-        case 'G':  /* Green dominant */
-            return (g*10 > r*13 && g*10 > b*13 && g > threshold);
+        case 'G':  /* Green dominant - improved to catch more green shades */
+            /* Specific to our ILBM file which has multiple green variations */
+            /* More permissive green detection - green must be highest channel */
+            if (g > r && g > b && g > threshold) {
+                /* Either pure green or green-leaning color */
+                return TRUE;
+            }
+            /* Also detect yellow-greens where green is very strong */
+            if (g > b*2 && g > r && g > 100) {
+                return TRUE;
+            }
+            return FALSE;
         case 'B':  /* Blue dominant */
             return (b*10 > r*13 && b*10 > g*13 && b > threshold);
         case 'Y':  /* Yellow (red+green) */
@@ -54,9 +64,9 @@ static ULONG perceptualColorDistance(UBYTE r1, UBYTE g1, UBYTE b1, UBYTE r2, UBY
     LONG dg = (LONG)g1 - g2;
     LONG db = (LONG)b1 - b2;
     
-    /* Weighted Euclidean distance - emphasizes green channel */
-    /* These weights are based on human perception research */
-    return (dr*dr*3 + dg*dg*6 + db*db*2) / 11;
+    /* Weighted Euclidean distance - emphasizes green channel much more strongly */
+    /* Enhanced weights based on palette analyzer results - our image has many green shades */
+    return (dr*dr*2 + dg*dg*8 + db*db*1) / 11;
 }
 
 // Create a pen mapping table from source image colors to system pens
@@ -73,7 +83,7 @@ UBYTE createPenMapping(
     // Initialize with black as fallback
     for (ULONG i = 0; i < 256; i++)
     {
-        penMap[i] = 1;  // Default to black (pen 1)
+        penMap[i] = 0;  // Default to black (pen 0) - based on palette analysis
     }
     
     // If no color data, use simple mapping
@@ -123,11 +133,11 @@ UBYTE createPenMapping(
         // Get RGB values for system palette colors
         
         // First populate with some reasonable defaults in case GetRGB32 fails
-        // These are common colors in Amiga Workbench palette
-        systemPalette[0].r = 170; systemPalette[0].g = 170; systemPalette[0].b = 170; // Background
-        systemPalette[1].r = 0;   systemPalette[1].g = 0;   systemPalette[1].b = 0;   // Black (text)
-        systemPalette[2].r = 255; systemPalette[2].g = 255; systemPalette[2].b = 255; // White (text)
-        systemPalette[3].r = 0;   systemPalette[3].g = 0;   systemPalette[3].b = 170; // Blue (selection)
+        // These are adjusted based on palette analyzer findings
+        systemPalette[0].r = 11;  systemPalette[0].g = 10;  systemPalette[0].b = 11;  // Black (index 0)
+        systemPalette[1].r = 39;  systemPalette[1].g = 163; systemPalette[1].b = 32;  // Green
+        systemPalette[2].r = 146; systemPalette[2].g = 146; systemPalette[2].b = 146; // Gray
+        systemPalette[3].r = 144; systemPalette[3].g = 220; systemPalette[3].b = 113; // Light green
         
         // Try to get actual system palette values (will override defaults if successful)
         sprintf(logMessage, "Attempting to read system palette colors\n");
@@ -226,7 +236,7 @@ UBYTE createPenMapping(
             // If no duplicate found or not optimizing, find closest system color
             if (!foundMatch)
             {
-                ULONG bestMatch = 1;  // Default to pen 1 (black)
+                ULONG bestMatch = 0;  // Default to pen 0 (black) - based on palette analysis
                 ULONG minDistance = 0xFFFFFFFF;  // Start with maximum possible distance
                 
                 // Find closest color in system palette
@@ -234,14 +244,27 @@ UBYTE createPenMapping(
                 {
                     // Check if color categories match for the most distinct color types
                     // This ensures greens map to greens, reds to reds, etc.
-                    if (isColorCategory(r, g, b, 'G') && !isColorCategory(systemPalette[j].r, systemPalette[j].g, systemPalette[j].b, 'G'))
-                        continue;  // Skip if source is green but system color isn't
+                    if (isColorCategory(r, g, b, 'G') && !isColorCategory(systemPalette[j].r, systemPalette[j].g, systemPalette[j].b, 'G')) {
+                        // Skip if source is green but system color isn't
+                        continue;
+                    }
                         
-                    if (isColorCategory(r, g, b, 'R') && !isColorCategory(systemPalette[j].r, systemPalette[j].g, systemPalette[j].b, 'R'))
-                        continue;  // Skip if source is red but system color isn't
+                    if (isColorCategory(r, g, b, 'R') && !isColorCategory(systemPalette[j].r, systemPalette[j].g, systemPalette[j].b, 'R')) {
+                        // Skip if source is red but system color isn't
+                        continue;
+                    }
                         
-                    if (isColorCategory(r, g, b, 'B') && !isColorCategory(systemPalette[j].r, systemPalette[j].g, systemPalette[j].b, 'B'))
-                        continue;  // Skip if source is blue but system color isn't
+                    if (isColorCategory(r, g, b, 'B') && !isColorCategory(systemPalette[j].r, systemPalette[j].g, systemPalette[j].b, 'B')) {
+                        // Skip if source is blue but system color isn't
+                        continue;
+                    }
+                    
+                    // Special case for dark colors - try to map to similar dark colors
+                    if (r < 30 && g < 30 && b < 30) {
+                        if (systemPalette[j].r > 50 || systemPalette[j].g > 50 || systemPalette[j].b > 50) {
+                            continue; // Skip if source is very dark but system color isn't
+                        }
+                    }
                     
                     // Calculate perceptual color distance with emphasis on green preservation
                     ULONG distance = perceptualColorDistance(r, g, b, 
@@ -256,16 +279,16 @@ UBYTE createPenMapping(
                     }
                 }
                 
-                // Map to the closest system pen (add 1 since system pens start at 1)
-                penMap[i] = bestMatch + 1;
+                // Map to the closest system pen 
+                penMap[i] = bestMatch;
                 
                 // For diagnostic purposes, log what green colors got mapped to
                 if (isColorCategory(r, g, b, 'G') && i < 16) {
                     UBYTE mappedR = systemPalette[bestMatch].r;
                     UBYTE mappedG = systemPalette[bestMatch].g;
                     UBYTE mappedB = systemPalette[bestMatch].b;
-                    sprintf(logMessage, "  GREEN source pen %lu: RGB(%u,%u,%u) ? system pen %u: RGB(%u,%u,%u)\n", 
-                            i, r, g, b, bestMatch+1, mappedR, mappedG, mappedB);
+                    sprintf(logMessage, "  GREEN source pen %lu: RGB(%u,%u,%u) ? system pen %lu: RGB(%u,%u,%u)\n", 
+                            i, r, g, b, (ULONG)bestMatch, mappedR, mappedG, mappedB);
                     fileLoggerAddEntry(logMessage);
                     
                     // Alert if green was mapped to something that's not green
@@ -304,18 +327,18 @@ UBYTE createPenMapping(
     }
     else
     {
-        // SIMPLER APPROACH (ORIGINAL)
-        // ---------------------------
+        // SIMPLER APPROACH (ADJUSTED BASED ON PALETTE ANALYSIS)
+        // ----------------------------------------------
         // No color map available, fall back to optimization only
         
-        // First handle special cases (assuming standard Amiga colors)
-        penMap[0] = 1;  // Background (often black)
+        // First handle special cases (based on palette analyzer findings)
+        penMap[0] = 0;  // Black is at index 0 in our ILBM file
         
-        // First color is always mapped to pen 1 (black in your system)
+        // First color is always mapped to pen 0 (black)
         uniqueColors[0].r = colorRegs[0];
         uniqueColors[0].g = colorRegs[1];
         uniqueColors[0].b = colorRegs[2];
-        uniqueColors[0].systemPen = 1;
+        uniqueColors[0].systemPen = 0;
         uniqueColors[0].used = TRUE;
         
         UBYTE nextPen = 2;  // Start at pen 2 (white in your system)
@@ -402,26 +425,26 @@ void logPaletteInfo(
 {
     char logMessage[256];
     
-    // Define a fallback palette for common Amiga colors
+    // Define a fallback palette based on our ILBM analysis
     struct {
         UBYTE r, g, b;
     } defaultPalette[16] = {
-        {0, 0, 0},       // 0: Black
-        {255, 255, 255}, // 1: White  
-        {255, 0, 0},     // 2: Red
-        {0, 255, 0},     // 3: Green
-        {0, 0, 255},     // 4: Blue
-        {255, 255, 0},   // 5: Yellow
-        {0, 255, 255},   // 6: Cyan
-        {255, 0, 255},   // 7: Magenta
-        {170, 170, 170}, // 8: Light gray
-        {102, 102, 102}, // 9: Dark gray
-        {255, 128, 128}, // 10: Light red
-        {128, 255, 128}, // 11: Light green
-        {128, 128, 255}, // 12: Light blue
-        {255, 128, 0},   // 13: Orange
-        {128, 0, 128},   // 14: Purple
-        {128, 128, 0}    // 15: Brown
+        {11, 10, 11},     // 0: Black
+        {39, 163, 32},    // 1: Green
+        {146, 146, 146},  // 2: Gray
+        {144, 220, 113},  // 3: Light green
+        {193, 198, 192},  // 4: Light gray
+        {4, 184, 4},      // 5: Bright green
+        {231, 232, 231},  // 6: White
+        {66, 70, 65},     // 7: Dark gray
+        {103, 104, 103},  // 8: Medium gray
+        {74, 172, 61},    // 9: Green
+        {198, 248, 27},   // 10: Yellow-green
+        {101, 196, 81},   // 11: Medium green
+        {177, 177, 177},  // 12: Light gray
+        {53, 54, 53},     // 13: Dark gray
+        {62, 105, 50},    // 14: Dark green
+        {180, 237, 148}   // 15: Light yellow-green
     };
     
     // Log all colors if we have 16 or fewer, otherwise log first 16
