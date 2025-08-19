@@ -41,6 +41,8 @@ int main(void)
     APTR app, window, strip, bt1, imagePanel;
     ULONG sigs = 0;
     BOOL running = TRUE;
+    UBYTE *outImageData = NULL;    
+    UBYTE *outRGBImageData = NULL;
 
     /* Initialize libraries */
     if (!init_libs())
@@ -85,13 +87,14 @@ int main(void)
     }
 
     /* Init Image Load */
-    UBYTE **outImageData = NULL;
-    UBYTE **outRGBImageData = NULL;
     fileLoggerAddEntry("Loading standard indexed image...");
-    loadILBMToBitmapObject("PROGDIR:assets/disk-space.ilbm", &outImageData);
-    
-    fileLoggerAddEntry("Loading RGB format image...");
-    loadILBMToBitmapObjectRGB("PROGDIR:assets/disk-space.ilbm", &outRGBImageData);
+    // Try our new improved version of the function
+    if (loadILBMToBitmapObject3("PROGDIR:assets/disk-space.ilbm", &outImageData)) {
+        fileLoggerAddEntry("Image loaded successfully for display");
+    } else {
+        fileLoggerAddEntry("Failed to load image for display");
+    }
+
 
     /* clang-format off */
 
@@ -182,18 +185,9 @@ int main(void)
     MUI_DisposeObject(app);
     
     // Free allocated image data
-    if (outImageData && *outImageData)
-    {
-        free(*outImageData);
-        *outImageData = NULL;
-        fileLoggerAddEntry("Freed standard image data");
-    }
-    
-    if (outRGBImageData && *outRGBImageData)
-    {
-        free(*outRGBImageData);
-        *outRGBImageData = NULL;
-        fileLoggerAddEntry("Freed RGB image data");
+    if (outImageData) {
+        free(outImageData);
+        outImageData = NULL;
     }
     
     cleanup_libs();

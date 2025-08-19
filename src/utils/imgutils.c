@@ -1,4 +1,5 @@
 #include "imgutils.h"
+#include "imgpaletteutils.h"
 
 BOOL loadILBMToBitmapObject2(CONST_STRPTR filename)
 {
@@ -12,11 +13,205 @@ BOOL loadILBMToBitmapObjectRGB2(CONST_STRPTR filename)
     return loadILBMToBitmapObjectRGB(filename, &outImageData);
 }
 
+BOOL loadILBMToBitmapObject3(CONST_STRPTR filename, UBYTE **outImageData)
+{
+    Object *dto = NULL;
+    struct BitMap *bmp = NULL;
+    struct BitMapHeader *bmHeader = NULL;
+    struct Screen *scr = NULL;
+    struct ColorMap *colorMap = NULL;
+    ULONG *colorTable = NULL;
+    UBYTE *colorRegs = NULL;
+    ULONG numColors = 0;
+    char logMessage[256];
+
+    snprintf(logMessage, sizeof(logMessage), "Loading ILBM (improved) from %s\n", filename);
+    fileLoggerAddEntry(logMessage);
+
+    if (!outImageData)
+    {
+        snprintf(logMessage, sizeof(logMessage), "Failed to load ILBM: outImageData is NULL for %s\n", filename);
+        fileLoggerAddEntry(logMessage);
+        return FALSE;
+    }
+    *outImageData = NULL;
+
+    // Open with specific attributes to get color information
+    dto = NewDTObject(filename, 
+                     DTA_GroupID, GID_PICTURE,
+                     PDTA_Remap, FALSE,       // Don't remap colors 
+                     TAG_DONE);
+
+    if (!dto)
+    {
+        snprintf(logMessage, sizeof(logMessage), "Failed to load DTO for %s\n", filename);
+        fileLoggerAddEntry(logMessage);
+        return FALSE;
+    }
+
+    // Trigger layout/rendering
+    DoDTMethod(dto, NULL, NULL, DTM_PROCLAYOUT, NULL, TRUE);
+
+    // Extract bitmap and all possible color information
+    struct BitMapHeader *bmhd = NULL;
+    ULONG modeid = 0;
+    
+    GetDTAttrs(dto, 
+        PDTA_BitMap, &bmp,
+        PDTA_BitMapHeader, &bmhd,
+        PDTA_NumColors, &numColors,
+        PDTA_CRegs, &colorRegs,       // Raw color registers (RGB triplets)
+        PDTA_ColorTable, &colorTable, // ARGB color values
+        PDTA_ModeID, &modeid,         // Display mode ID
+        TAG_END);
+
+    ULONG bmp_width = 0, bmp_height = 0, bmp_depth = 0;
+
+    if (bmhd)
+    {
+        bmp_width = bmhd->bmh_Width;
+        bmp_height = bmhd->bmh_Height;
+        bmp_depth = bmhd->bmh_Depth;
+        
+        // Calculate number of colors from bit depth if not provided
+        if (numColors == 0 && bmp_depth > 0)
+        {
+            numColors = 1 << bmp_depth;  // 2^depth
+        }
+    }
+
+    if (!bmp)
+    {
+        sprintf(logMessage, "Bitmap not loaded from %s\n", filename);
+        fileLoggerAddEntry(logMessage);
+        DisposeDTObject(dto);
+        return FALSE;
+    }
+
+    // Get color map from the default public screen (A1200 with AGA chipset)
+    scr = LockPubScreen(NULL);
+    if (scr)
+    {
+        colorMap = scr->ViewPort.ColorMap;
+        sprintf(logMessage, "Using ColorMap from default public screen\n");
+        fileLoggerAddEntry(logMessage);
+    }
+    else
+    {
+        sprintf(logMessage, "Warning: Could not lock public screen for ColorMap\n");
+        fileLoggerAddEntry(logMessage);
+        DisposeDTObject(dto);
+        return FALSE;
+    }
+
+    if (bmp)
+    {
+        // Use sprintf instead of snprintf (not available in AmigaOS 3.1)
+        sprintf(logMessage, "Bitmap loaded: %lux%lu pixels, %lu bitplanes, %lu colors, ModeID: 0x%08lx\n", 
+                bmp_width, bmp_height, bmp_depth, numColors, modeid);
+        fileLoggerAddEntry(logMessage);
+    }
+
+    // Define a fallback palette for common Amiga colors
+    // This will be used if we can't get the colors from the file
+    struct {
+        UBYTE r, g, b;
+    } defaultPalette[16] = {
+        {0, 0, 0},       // 0: Black
+        {255, 255, 255}, // 1: White  
+        {255, 0, 0},     // 2: Red
+        {0, 255, 0},     // 3: Green
+        {0, 0, 255},     // 4: Blue
+        {255, 255, 0},   // 5: Yellow
+        {0, 255, 255},   // 6: Cyan
+        {255, 0, 255},   // 7: Magenta
+        {170, 170, 170}, // 8: Light gray
+        {102, 102, 102}, // 9: Dark gray
+        {255, 128, 128}, // 10: Light red
+        {128, 255, 128}, // 11: Light green
+        {128, 128, 255}, // 12: Light blue
+        {255, 128, 0},   // 13: Orange
+        {128, 0, 128},   // 14: Purple
+        {128, 128, 0}    // 15: Brown
+    };
+
+    // Log color information if available
+    logPaletteInfo(colorRegs, numColors, colorTable);
+
+    // Convert bitmap to byte array for MUI 3.8 ImageObject
+    UBYTE *imageData = NULL;
+    ULONG imageDataSize;
+
+    // Calculate size needed for chunky pixel data
+    imageDataSize = bmp_width * bmp_height;
+    imageData = (UBYTE *)malloc(imageDataSize);
+
+    if (imageData)
+    {
+        // Clear memory
+        memset(imageData, 0, imageDataSize);
+
+        struct RastPort tempRP;
+        UBYTE *pixelPtr = imageData;
+        ULONG x, y;
+
+        // Initialize temporary RastPort
+        InitRastPort(&tempRP);
+        tempRP.BitMap = bmp;
+
+        // Create a mapping table from source pens to system pens
+        UBYTE penMap[256];
+        
+        // Create the pen mapping, optimizing for duplicate colors and using ColorMap for accurate matches
+        UBYTE uniqueColorCount = createPenMapping(penMap, colorRegs, numColors, TRUE, colorMap);
+        
+        // Log our pen mappings
+        logPenMappingInfo(penMap, colorRegs, numColors);
+
+        // Read pixels from bitmap and convert to chunky format with pen remapping
+        for (y = 0; y < bmp_height; y++)
+        {
+            for (x = 0; x < bmp_width; x++)
+            {
+                // Read pixel from bitmap (returns pen number)
+                UBYTE sourcePen = ReadPixel(&tempRP, x, y);
+                
+                // Apply pen mapping
+                UBYTE mappedPen = penMap[sourcePen];
+                
+                *pixelPtr++ = mappedPen;
+            }
+        }
+
+        *outImageData = imageData; // Store pointer to free later
+        sprintf(logMessage, "Bitmap converted to chunky data with pen remapping (%lu bytes)\n", imageDataSize);
+        fileLoggerAddEntry(logMessage);
+    }
+    else
+    {
+        sprintf(logMessage, "Failed to allocate memory for image conversion\n");
+        fileLoggerAddEntry(logMessage);
+    }
+
+    // Clean up
+    if (scr)
+    {
+        UnlockPubScreen(NULL, scr);
+    }
+    DisposeDTObject(dto);
+
+    return (imageData != NULL);
+}
+
 BOOL loadILBMToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData)
 {
     Object *dto = NULL;
     struct BitMap *bmp = NULL;
     struct BitMapHeader *bmHeader = NULL;
+    struct Screen *scr = NULL;
+    struct ColorMap *colorMap = NULL;
+    ULONG *colorTable = NULL;
+    ULONG numColors = 0;
     char logMessage[256];
 
     snprintf(logMessage, sizeof(logMessage), "Loading ILBM from %s\n", filename);
@@ -45,9 +240,14 @@ BOOL loadILBMToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData)
     // Extract bitmap - AmigaOS 3.1 compatible method
     // Get the bitmap through the object's instance data
     struct BitMapHeader *bmhd;
-    GetDTAttrs(dto, PDTA_BitMap, &bmp, PDTA_BitMapHeader, &bmhd, TAG_END);
+    GetDTAttrs(dto, 
+        PDTA_BitMap, &bmp, 
+        PDTA_BitMapHeader, &bmhd,
+        PDTA_ColorTable, &colorTable,
+        PDTA_NumColors, &numColors,
+        TAG_END);
 
-    ULONG bmp_width, bmp_height, bmp_depth;
+    ULONG bmp_width = 0, bmp_height = 0, bmp_depth = 0;
 
     if (bmhd)
     {
@@ -64,10 +264,51 @@ BOOL loadILBMToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData)
         return FALSE;
     }
 
+    // Get color map from the default public screen (A1200 with AGA chipset)
+    scr = LockPubScreen(NULL);
+    if (scr)
+    {
+        colorMap = scr->ViewPort.ColorMap;
+        sprintf(logMessage, "Using ColorMap from default public screen\n");
+        fileLoggerAddEntry(logMessage);
+    }
+    else
+    {
+        sprintf(logMessage, "Warning: Could not lock public screen for ColorMap\n");
+        fileLoggerAddEntry(logMessage);
+        DisposeDTObject(dto);
+        return FALSE;
+    }
+
     if (bmp)
     {
         // Use sprintf instead of snprintf (not available in AmigaOS 3.1)
-        sprintf(logMessage, "Bitmap loaded: %lux%lu pixels\n", bmp_width, bmp_height);
+        sprintf(logMessage, "Bitmap loaded: %lux%lu pixels, %lu bitplanes, %lu colors\n", 
+                bmp_width, bmp_height, bmp_depth, numColors);
+        fileLoggerAddEntry(logMessage);
+    }
+
+    // Log the color table if available
+    if (colorTable && numColors > 0)
+    {
+        sprintf(logMessage, "Color table available with %lu colors\n", numColors);
+        fileLoggerAddEntry(logMessage);
+        
+        // Log a few sample colors (up to 4)
+        ULONG samplesToLog = numColors > 4 ? 4 : numColors;
+        for (ULONG i = 0; i < samplesToLog; i++)
+        {
+            ULONG rgb = colorTable[i];
+            UBYTE r = (rgb >> 16) & 0xFF;
+            UBYTE g = (rgb >> 8) & 0xFF;
+            UBYTE b = rgb & 0xFF;
+            sprintf(logMessage, "  Color %lu: R=%u G=%u B=%u (0x%06lx)\n", i, r, g, b, rgb);
+            fileLoggerAddEntry(logMessage);
+        }
+    }
+    else
+    {
+        sprintf(logMessage, "No color table available\n");
         fileLoggerAddEntry(logMessage);
     }
 
@@ -92,30 +333,61 @@ BOOL loadILBMToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData)
         InitRastPort(&tempRP);
         tempRP.BitMap = bmp;
 
-        // Read pixels from bitmap and convert to chunky format
+        // Read pixels from bitmap and convert to chunky format with pen remapping
         for (y = 0; y < bmp_height; y++)
         {
             for (x = 0; x < bmp_width; x++)
             {
                 // Read pixel from bitmap (returns pen number)
-                UBYTE pixel = ReadPixel(&tempRP, x, y);
-                *pixelPtr++ = pixel;
+                UBYTE sourcePen = ReadPixel(&tempRP, x, y);
+                UBYTE mappedPen = 0;
+                
+                // Map source pens to our custom pens where:
+                // 1 = black, 2 = white, etc.
+                // This preserves color order but shifts the index
+                if (sourcePen == 0)
+                {
+                    mappedPen = 1; // Map background color (usually 0) to 1 (black)
+                }
+                else if (sourcePen < numColors)
+                {
+                    // Shift all other colors by 1
+                    mappedPen = sourcePen + 1;
+                    
+                    // Safety check to not exceed pen limits
+                    if (mappedPen >= 256)
+                    {
+                        mappedPen = 255;
+                    }
+                }
+                else
+                {
+                    // Out of range color - use black
+                    mappedPen = 1;
+                }
+                
+                *pixelPtr++ = mappedPen;
             }
         }
 
         *outImageData = imageData; // Store pointer to free later
-        sprintf(logMessage, "Bitmap converted to chunky data (%lu bytes)\n", imageDataSize);
+        sprintf(logMessage, "Bitmap converted to chunky data with pen remapping (%lu bytes)\n", imageDataSize);
         fileLoggerAddEntry(logMessage);
-        DisposeDTObject(dto);
     }
     else
     {
         sprintf(logMessage, "Failed to allocate memory for image conversion\n");
         fileLoggerAddEntry(logMessage);
-        DisposeDTObject(dto);
     }
 
-    return TRUE;
+    // Clean up
+    if (scr)
+    {
+        UnlockPubScreen(NULL, scr);
+    }
+    DisposeDTObject(dto);
+
+    return (imageData != NULL);
 }
 
 BOOL loadILBMToBitmapObjectRGB(CONST_STRPTR filename, UBYTE **outImageData)

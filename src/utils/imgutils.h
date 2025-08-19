@@ -15,6 +15,7 @@
 
 BOOL loadILBMToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData);
 BOOL loadILBMToBitmapObject2(CONST_STRPTR filename);
+BOOL loadILBMToBitmapObject3(CONST_STRPTR filename, UBYTE **outImageData);
 BOOL loadILBMToBitmapObjectRGB(CONST_STRPTR filename, UBYTE **outImageData);
 BOOL loadILBMToBitmapObjectRGB2(CONST_STRPTR filename);
 
