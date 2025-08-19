@@ -232,6 +232,21 @@ void mDrawRGB(Object *obj, struct PTEImagePanelData *data)
     WORD left, top, right, bottom;
     char logMessage[256];
 
+// Amiga hardware has limited color palette
+#define MAX_COLORS 16 // Use 16 pens (excluding pen 0 which is often the background)
+    UBYTE redValues[MAX_COLORS];
+    UBYTE greenValues[MAX_COLORS];
+    UBYTE blueValues[MAX_COLORS];
+    BOOL colorUsed[MAX_COLORS];
+    UBYTE colorCount = 0;
+
+    // Two-pass approach: first identify all unique colors, then draw
+    UBYTE colorMap[16][16][16]; // Maps 4-bit RGB to pen numbers
+
+    // Get the ViewPort once outside the pixel loop
+    struct ViewPort *vp = NULL;
+    struct Screen *scr = NULL;
+
     loggerFormatMessage(logMessage, "PTEImagePanel: we have RGB image data at: 0x%08lx", (ULONG)data->imageData);
     fileLoggerAddEntry(logMessage);
 
@@ -241,6 +256,116 @@ void mDrawRGB(Object *obj, struct PTEImagePanelData *data)
     {
         fileLoggerAddEntry("PTEImagePanel: rp failed...");
         return;
+    }
+
+    // Get the screen properly from the window that contains this object
+    Object *win = getWindowObject(obj);
+    if (win)
+    {
+        // Get the screen from the window
+        struct Window *window = NULL;
+        get(win, MUIA_Window_Window, &window);
+        if (window)
+        {
+            scr = window->WScreen;
+            if (scr)
+            {
+                vp = &scr->ViewPort;
+                fileLoggerAddDebugEntry("Successfully retrieved ViewPort from window");
+            }
+        }
+    }
+
+    // Fallback to ViewPortAddress if we couldn't get it through MUI
+    if (!vp)
+    {
+        vp = ViewPortAddress(NULL);
+        fileLoggerAddDebugEntry("Falling back to ViewPortAddress(NULL)");
+    }
+
+    if (!vp)
+    {
+        fileLoggerAddEntry("PTEImagePanel: No viewport available, cannot draw RGB image");
+        return;
+    }
+
+    // Initialize color tables
+    for (UBYTE i = 0; i < MAX_COLORS; i++)
+    {
+        colorUsed[i] = FALSE;
+    }
+
+    // Initialize the color map to invalid values
+    for (UBYTE r = 0; r < 16; r++)
+    {
+        for (UBYTE g = 0; g < 16; g++)
+        {
+            for (UBYTE b = 0; b < 16; b++)
+            {
+                colorMap[r][g][b] = 255; // Invalid pen number
+            }
+        }
+    }
+
+    // First pass: Find all unique colors in the image and build color map
+    fileLoggerAddEntry("First pass: Identifying unique colors in the image");
+    for (WORD y = 0; y < data->imageHeight; y++)
+    {
+        for (WORD x = 0; x < data->imageWidth; x++)
+        {
+            // Calculate offset into RGB chunky data (3 bytes per pixel)
+            ULONG offset = (y * data->imageWidth + x) * 3;
+
+            // Get RGB components (bytes are packed R,G,B consecutively)
+            UBYTE r = data->imageData[offset];
+            UBYTE g = data->imageData[offset + 1];
+            UBYTE b = data->imageData[offset + 2];
+
+            // Convert 8-bit RGB to the 4-bit per component Amiga format (0-15)
+            UBYTE r4 = (r >> 4) & 0xF;
+            UBYTE g4 = (g >> 4) & 0xF;
+            UBYTE b4 = (b >> 4) & 0xF;
+
+            // If this color isn't already in our map, add it
+            if (colorMap[r4][g4][b4] == 255 && colorCount < MAX_COLORS)
+            {
+                // Assign a pen to this color
+                colorMap[r4][g4][b4] = colorCount;
+
+                // Store color values
+                redValues[colorCount] = r4;
+                greenValues[colorCount] = g4;
+                blueValues[colorCount] = b4;
+                colorUsed[colorCount] = TRUE;
+
+                colorCount++;
+
+                // Log the detected color
+                char colorMsg[64];
+                sprintf(colorMsg, "Color %d: R=%d, G=%d, B=%d", colorCount, r4, g4, b4);
+                fileLoggerAddDebugEntry(colorMsg);
+
+                // Stop if we've reached the maximum number of colors
+                if (colorCount >= MAX_COLORS)
+                {
+                    fileLoggerAddEntry("Maximum number of colors reached (16)");
+                    break;
+                }
+            }
+        }
+
+        if (colorCount >= MAX_COLORS)
+            break;
+    }
+
+    // If we didn't find 16 colors, we'll still have valid entries up to colorCount
+    sprintf(logMessage, "Found %d unique colors in the image", colorCount);
+    fileLoggerAddEntry(logMessage);
+
+    // Set the palette with our identified colors
+    for (UBYTE i = 0; i < colorCount; i++)
+    {
+        SetRGB4(vp, i + 1, redValues[i], greenValues[i], blueValues[i]);
     }
 
     // Calculate inset bounds
@@ -255,7 +380,8 @@ void mDrawRGB(Object *obj, struct PTEImagePanelData *data)
     right = left + right - 1;
     bottom = top + bottom - 1;
 
-    // Draw image inside drawable area
+    // Second pass: Draw the image using our 1:1 color mapping
+    fileLoggerAddEntry("Second pass: Drawing image with exact color mapping");
     for (WORD y = 0; y < data->imageHeight; y++)
     {
         for (WORD x = 0; x < data->imageWidth; x++)
@@ -274,63 +400,34 @@ void mDrawRGB(Object *obj, struct PTEImagePanelData *data)
                 UBYTE g = data->imageData[offset + 1];
                 UBYTE b = data->imageData[offset + 2];
 
-                // For Amiga OS 3.1 we need to use appropriate color setting
                 // Convert 8-bit RGB to the 4-bit per component Amiga format (0-15)
-                ULONG amigaR = (r >> 4) & 0xF; // Scale down to 0-15
-                ULONG amigaG = (g >> 4) & 0xF; // Scale down to 0-15
-                ULONG amigaB = (b >> 4) & 0xF; // Scale down to 0-15
+                UBYTE r4 = (r >> 4) & 0xF;
+                UBYTE g4 = (g >> 4) & 0xF;
+                UBYTE b4 = (b >> 4) & 0xF;
 
-                // Use color 1 for drawing (typically pen 1 is available for application use)
-                // On Amiga OS 3.1, we need to get the ViewPort to access the color map
-                struct ViewPort *vp = NULL;
-                struct Screen *scr = NULL;
+                // Look up the pen from our color map
+                UBYTE pen = colorMap[r4][g4][b4];
 
-                // Get the screen properly from the window that contains this object
-                Object *win = getWindowObject(obj);
-                if (win)
+                // If this color wasn't in our map (which shouldn't happen if we have ?16 colors),
+                // use pen 1 as a fallback
+                if (pen == 255)
                 {
-                    // Get the screen from the window
-                    struct Window *window = NULL;
-                    get(win, MUIA_Window_Window, &window);
-                    if (window)
-                    {
-                        scr = window->WScreen;
-                        if (scr)
-                        {
-                            vp = &scr->ViewPort;
-
-                            // Log success for debugging
-                            fileLoggerAddDebugEntry("Successfully retrieved ViewPort from window");
-                        }
-                    }
-                }
-
-                // Fallback to ViewPortAddress if we couldn't get it through MUI
-                if (!vp)
-                {
-                    vp = ViewPortAddress(NULL);
-                    fileLoggerAddDebugEntry("Falling back to ViewPortAddress(NULL)");
-                }
-
-                if (vp)
-                {
-                    // Set the color in the color map
-                    SetRGB4(vp, 1, amigaR, amigaG, amigaB);
-
-                    // Use this pen for drawing
-                    SetAPen(rp, 1);
+                    pen = 1;
                 }
                 else
                 {
-                    // Fallback to a fixed pen if we can't set colors
-                    SetAPen(rp, 1);
+                    // Add 1 to the pen because pens start at 1 (0 is often the background)
+                    pen = pen + 1;
                 }
 
-                // Draw the pixel
+                // Set the pen and draw the pixel
+                SetAPen(rp, pen);
                 WritePixel(rp, px, py);
             }
         }
     }
+
+    fileLoggerAddEntry("RGB image drawing completed with 1:1 color mapping");
 }
 
 /***********************************************************************/
