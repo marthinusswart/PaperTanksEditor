@@ -14,6 +14,7 @@ void mDrawBorder(Object *obj, struct PTEImagePanelData *data);
 void mDrawRaw(Object *obj, struct PTEImagePanelData *data);
 void mDrawRGB(Object *obj, struct PTEImagePanelData *data);
 LONG xget(Object *obj, ULONG attribute);
+Object *getWindowObject(Object *obj);
 
 struct MUI_CustomClass *pteImagePanelClass;
 
@@ -282,11 +283,34 @@ void mDrawRGB(Object *obj, struct PTEImagePanelData *data)
                 // Use color 1 for drawing (typically pen 1 is available for application use)
                 // On Amiga OS 3.1, we need to get the ViewPort to access the color map
                 struct ViewPort *vp = NULL;
+                struct Screen *scr = NULL;
 
-                // In MUI, we can get the screen's ViewPort
-                // This is a simplified approach - in a real application, you should
-                // properly get the screen from MUI
-                vp = ViewPortAddress(NULL);
+                // Get the screen properly from the window that contains this object
+                Object *win = getWindowObject(obj);
+                if (win)
+                {
+                    // Get the screen from the window
+                    struct Window *window = NULL;
+                    get(win, MUIA_Window_Window, &window);
+                    if (window)
+                    {
+                        scr = window->WScreen;
+                        if (scr)
+                        {
+                            vp = &scr->ViewPort;
+
+                            // Log success for debugging
+                            fileLoggerAddDebugEntry("Successfully retrieved ViewPort from window");
+                        }
+                    }
+                }
+
+                // Fallback to ViewPortAddress if we couldn't get it through MUI
+                if (!vp)
+                {
+                    vp = ViewPortAddress(NULL);
+                    fileLoggerAddDebugEntry("Falling back to ViewPortAddress(NULL)");
+                }
 
                 if (vp)
                 {
@@ -398,4 +422,31 @@ LONG xget(Object *obj, ULONG attribute)
     LONG x;
     get(obj, attribute, &x);
     return (x);
+}
+
+/**********************************************************************/
+
+Object *getWindowObject(Object *obj)
+{
+    Object *win = NULL;
+
+    // Attempt to find window by walking up the object hierarchy
+    Object *parent = obj;
+    while (parent)
+    {
+        // Check if this is a window
+        LONG isWindow = 0;
+        get(parent, MUIA_WindowObject, &isWindow);
+        if (isWindow)
+        {
+            win = parent;
+            break;
+        }
+
+        // Move up to parent
+        get(parent, MUIA_Parent, &parent);
+    }
+
+    fileLoggerAddDebugEntry(win ? "Found window object" : "Window object not found");
+    return win;
 }
