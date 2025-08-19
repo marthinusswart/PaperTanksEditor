@@ -130,21 +130,50 @@ UBYTE createPenMapping(
         systemPalette[3].r = 0;   systemPalette[3].g = 0;   systemPalette[3].b = 170; // Blue (selection)
         
         // Try to get actual system palette values (will override defaults if successful)
-        sprintf(logMessage, "Reading system palette colors from ColorMap\n");
+        sprintf(logMessage, "Attempting to read system palette colors\n");
         fileLoggerAddEntry(logMessage);
         
         // Retrieve system palette colors - Read up to 32 colors for efficiency
         ULONG colorsToRead = (systemColorCount > 32) ? 32 : systemColorCount;
         
-        for (ULONG i = 0; i < colorsToRead; i++)
-        {
-            // GetRGB4 returns 4-bit per component (0-15 range)
-            ULONG rgb = GetRGB4(colorMap, i);
+        // Option 1: Try to get color information from the current screen's ViewPort
+        BOOL screenPaletteReadSuccess = FALSE;
+        struct Screen *scr = LockPubScreen(NULL);
+        if (scr) {
+            sprintf(logMessage, "Reading palette from current screen's ViewPort\n");
+            fileLoggerAddEntry(logMessage);
             
-            // Extract components from RGB4 value (0xRGB format)
-            systemPalette[i].r = ((rgb >> 8) & 0xF) * 17;  // Scale 0-15 to 0-255
-            systemPalette[i].g = ((rgb >> 4) & 0xF) * 17;
-            systemPalette[i].b = (rgb & 0xF) * 17;
+            // Use screen's ColorMap if available
+            if (scr->ViewPort.ColorMap) {
+                for (ULONG i = 0; i < colorsToRead; i++) {
+                    // GetRGB4 returns 4-bit per component (0-15 range)
+                    ULONG rgb = GetRGB4(scr->ViewPort.ColorMap, i);
+                    
+                    // Extract components from RGB4 value (0xRGB format)
+                    systemPalette[i].r = ((rgb >> 8) & 0xF) * 17;  // Scale 0-15 to 0-255
+                    systemPalette[i].g = ((rgb >> 4) & 0xF) * 17;
+                    systemPalette[i].b = (rgb & 0xF) * 17;
+                }
+                screenPaletteReadSuccess = TRUE;
+            }
+            
+            UnlockPubScreen(NULL, scr);
+        }
+        
+        // Option 2: Fall back to provided ColorMap if screen method fails
+        if (!screenPaletteReadSuccess && colorMap) {
+            sprintf(logMessage, "Using provided ColorMap\n");
+            fileLoggerAddEntry(logMessage);
+            
+            for (ULONG i = 0; i < colorsToRead; i++) {
+                // GetRGB4 returns 4-bit per component (0-15 range)
+                ULONG rgb = GetRGB4(colorMap, i);
+                
+                // Extract components from RGB4 value (0xRGB format)
+                systemPalette[i].r = ((rgb >> 8) & 0xF) * 17;  // Scale 0-15 to 0-255
+                systemPalette[i].g = ((rgb >> 4) & 0xF) * 17;
+                systemPalette[i].b = (rgb & 0xF) * 17;
+            }
         }
         
         // Log a few system palette colors
