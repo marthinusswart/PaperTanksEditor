@@ -1,0 +1,45 @@
+/*
+ * Basic PNG image loading utilities for AmigaOS 3.1
+ * Simple internal PNG decoder for PaperTanksEditor
+ */
+
+#ifndef IMGPNGUTILS_H
+#define IMGPNGUTILS_H
+
+#include <exec/types.h>
+#include <graphics/view.h>
+#include "../utils/filelogger.h"
+#include "graphics.h"
+
+/* PNG chunk type identifiers */
+#define PNG_CHUNK_IHDR 0x49484452 /* "IHDR" */
+#define PNG_CHUNK_PLTE 0x504C5445 /* "PLTE" */
+#define PNG_CHUNK_IDAT 0x49444154 /* "IDAT" */
+#define PNG_CHUNK_IEND 0x49454E44 /* "IEND" */
+
+/* PNG color types */
+#define PNG_COLOR_TYPE_GRAYSCALE 0
+#define PNG_COLOR_TYPE_RGB 2
+#define PNG_COLOR_TYPE_PALETTE 3
+#define PNG_COLOR_TYPE_GRAYSCALE_ALPHA 4
+#define PNG_COLOR_TYPE_RGBA 6
+
+/* PNG header structure */
+typedef struct
+{
+    ULONG width;
+    ULONG height;
+    UBYTE bitDepth;
+    UBYTE colorType;
+    UBYTE compressionMethod;
+    UBYTE filterMethod;
+    UBYTE interlaceMethod;
+} PNGHeader;
+
+/* Load PNG image with palette information */
+BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ILBMPalette **outPalette);
+
+/* Load PNG directly to RGB bitmap - for 24-bit PNG files */
+BOOL loadPNGToBitmapObjectRGB(CONST_STRPTR filename, UBYTE **outImageData);
+
+#endif /* IMGPNGUTILS_H */

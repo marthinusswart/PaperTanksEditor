@@ -15,6 +15,7 @@ void mDrawRaw(Object *obj, struct PTEImagePanelData *data);
 void mDrawRaw2(Object *obj, struct PTEImagePanelData *data);
 void mDrawRGB(Object *obj, struct PTEImagePanelData *data);
 void mDrawRGB2(Object *obj, struct PTEImagePanelData *data);
+void mDrawRGB3(Object *obj, struct PTEImagePanelData *data);
 LONG xget(Object *obj, ULONG attribute);
 Object *getWindowObject(Object *obj);
 
@@ -72,6 +73,7 @@ IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg)
     WORD imageWidth = 0;
     BOOL enableRGB = FALSE;
     ILBMPalette *ilbmPalette = NULL;
+    BOOL useBGRA = FALSE;
 
     // Parse tag list for custom attributes
     struct TagItem *tags = msg->ops_AttrList;
@@ -124,6 +126,10 @@ IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg)
             ilbmPalette = (ILBMPalette *)walk->ti_Data;
             break;
 
+        case PTEA_UseBGRA:
+            useBGRA = (BOOL)walk->ti_Data;
+            break;
+
         default:
             break;
         }
@@ -139,6 +145,7 @@ IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg)
     data->imageWidth = imageWidth;
     data->enableRGB = enableRGB;
     data->ilbmPalette = ilbmPalette;
+    data->useBGRA = useBGRA;
 
     return (ULONG)obj;
 }
@@ -575,7 +582,17 @@ IPTR SAVEDS mDraw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
         }
         else
         {
-            mDrawRGB2(obj, data);
+            // Use the appropriate RGB drawing function based on flags
+            if (data->useBGRA)
+            {
+                // Use the new function that supports BGRA color order
+                mDrawRGB3(obj, data);
+            }
+            else
+            {
+                // Use the existing function for RGBA color order
+                mDrawRGB2(obj, data);
+            }
         }
     }
     return 0;
@@ -678,7 +695,14 @@ void mDrawRGB2(Object *obj, struct PTEImagePanelData *data)
         bottom = _mbottom(obj) - data->borderMargin;
 
     fileLoggerAddEntry("True 24-bit direct RGB drawing - no pen allocation required");
-    fileLoggerAddEntry("Using direct RGB values with 16.7 million colors (24-bit)");
+    if (data->useBGRA)
+    {
+        fileLoggerAddEntry("Using BGRA color order for 24-bit drawing");
+    }
+    else
+    {
+        fileLoggerAddEntry("Using RGBA color order for 24-bit drawing");
+    }
 
     // Direct RGB drawing without color mapping or palette lookups
     for (WORD y = 0; y < data->imageHeight; y++)
@@ -698,6 +722,182 @@ void mDrawRGB2(Object *obj, struct PTEImagePanelData *data)
                 UBYTE r = data->imageData[offset];
                 UBYTE g = data->imageData[offset + 1];
                 UBYTE b = data->imageData[offset + 2];
+
+                // In a true 24-bit environment, we can directly use these RGB values
+                // without the overhead of ObtainBestPen/ReleasePen for each pixel
+
+                // For Amiga systems, we can use WriteRGBPixel directly if available
+                // or use a system-specific optimized method for direct RGB drawing
+
+                // MUI in 24-bit mode typically has a way to set RGB values directly
+                // This is a simplified approach using the screen's color map directly
+                ULONG colorValue = (r << 16) | (g << 8) | b;
+
+                // Set the corresponding color in the pen array
+                // This works because in 24-bit mode, we have direct color mapping
+                SetAPen(rp, colorValue & 0xFFFFFF);
+                WritePixel(rp, px, py);
+            }
+        }
+    }
+
+    fileLoggerAddEntry("24-bit direct RGB drawing completed successfully - no pen allocation used");
+}
+
+/***********************************************************************/
+
+/**
+ * New RGB drawing function that supports both RGBA and BGRA color orders
+ * Adds useBGRA flag to support Amiga environments that use BGRA ordering
+ * while maintaining backward compatibility with RGBA
+ */
+void mDrawRGB3(Object *obj, struct PTEImagePanelData *data)
+{
+    struct RastPort *rp;
+    struct Screen *scr = NULL;
+    struct ViewPort *vp = NULL;
+    WORD left, top, right, bottom;
+    char logMessage[256];
+
+    loggerFormatMessage(logMessage, "Drawing RGB image data at: 0x%08lx in 24-bit mode with color order: %s",
+                        (ULONG)data->imageData, data->useBGRA ? "BGRA" : "RGBA");
+    fileLoggerAddEntry(logMessage);
+
+    // Check if we have image data
+    if (!data->imageData)
+    {
+        fileLoggerAddEntry("PTEImagePanel: No image data to draw");
+        return;
+    }
+
+    // Check if we have valid dimensions
+    if (data->imageWidth <= 0 || data->imageHeight <= 0)
+    {
+        fileLoggerAddEntry("PTEImagePanel: Invalid image dimensions");
+        return;
+    }
+
+    // Get the rastport
+    rp = _rp(obj);
+    if (!rp)
+    {
+        fileLoggerAddEntry("PTEImagePanel: rp failed, cannot draw");
+        return;
+    }
+
+    // Get the screen from the window - this is required for direct RGB drawing
+    Object *win = getWindowObject(obj);
+    if (!win)
+    {
+        fileLoggerAddEntry("PTEImagePanel: Could not get window object, cannot draw");
+        return;
+    }
+
+    // First try to get screen directly using MUI macros
+    scr = _screen(obj);
+    if (scr)
+    {
+        fileLoggerAddEntry("Successfully got screen using _screen() macro");
+        vp = &scr->ViewPort;
+    }
+    else
+    {
+        // Try getting window structure if macro didn't work
+        struct Window *window = NULL;
+        get(win, MUIA_Window_Window, &window);
+
+        if (window && window->WScreen)
+        {
+            scr = window->WScreen;
+            vp = &scr->ViewPort;
+            fileLoggerAddEntry("Successfully got screen from Window structure");
+        }
+        else
+        {
+            // Try getting screen directly
+            get(win, MUIA_Window_Screen, &scr);
+            if (scr)
+            {
+                vp = &scr->ViewPort;
+                fileLoggerAddEntry("Successfully got screen from MUIA_Window_Screen");
+            }
+            else
+            {
+                // In case we can't get the screen, we'll use a fallback approach for 24-bit drawing
+                fileLoggerAddEntry("WARNING: Could not get screen structure, using direct 24-bit drawing without screen info");
+                // We'll continue without screen/viewport information
+            }
+        }
+    }
+
+    // Log success or continue without viewport
+    if (vp)
+    {
+        fileLoggerAddEntry("Successfully retrieved ViewPort for 24-bit drawing");
+    }
+    else
+    {
+        fileLoggerAddEntry("No ViewPort available, continuing with direct 24-bit drawing");
+    }
+
+    // Calculate inset bounds
+    left = _mleft(obj) + data->borderMargin;
+    top = _mtop(obj) + data->borderMargin;
+    right = _mright(obj) - data->borderMargin;
+    bottom = _mbottom(obj) - data->borderMargin;
+
+    // Convert width/height to right/bottom
+    left += 5;
+    top += 5;
+    right = left + data->imageWidth - 1;
+    bottom = top + data->imageHeight - 1;
+
+    // Check bounds against drawable area
+    if (right > _mright(obj) - data->borderMargin)
+        right = _mright(obj) - data->borderMargin;
+    if (bottom > _mbottom(obj) - data->borderMargin)
+        bottom = _mbottom(obj) - data->borderMargin;
+
+    fileLoggerAddEntry("True 24-bit direct RGB drawing - no pen allocation required");
+    if (data->useBGRA)
+    {
+        fileLoggerAddEntry("Using BGRA color order for 24-bit drawing");
+    }
+    else
+    {
+        fileLoggerAddEntry("Using RGBA color order for 24-bit drawing (default)");
+    }
+
+    // Direct RGB drawing without color mapping or palette lookups
+    for (WORD y = 0; y < data->imageHeight; y++)
+    {
+        for (WORD x = 0; x < data->imageWidth; x++)
+        {
+            LONG px = left + x;
+            LONG py = top + y;
+
+            // Clip to drawable area
+            if (px <= right && py <= bottom)
+            {
+                // Calculate offset into RGB chunky data (3 bytes per pixel)
+                ULONG offset = (y * data->imageWidth + x) * 3;
+
+                UBYTE r, g, b;
+
+                if (data->useBGRA)
+                {
+                    // Get components in BGRA order (bytes are packed B,G,R consecutively)
+                    b = data->imageData[offset];
+                    g = data->imageData[offset + 1];
+                    r = data->imageData[offset + 2];
+                }
+                else
+                {
+                    // Get components in RGBA order (bytes are packed R,G,B consecutively)
+                    r = data->imageData[offset];
+                    g = data->imageData[offset + 1];
+                    b = data->imageData[offset + 2];
+                }
 
                 // In a true 24-bit environment, we can directly use these RGB values
                 // without the overhead of ObtainBestPen/ReleasePen for each pixel

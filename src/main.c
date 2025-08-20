@@ -90,17 +90,22 @@ int main(void)
         fileLoggerAddEntry(logMessage);
     }
 
-    /* Init Image Load */
-    fileLoggerAddEntry("Loading standard indexed image...");
-    // Try our new improved version of the function
-    BOOL loaded = loadILBMToBitmapObjectRGB3("PROGDIR:assets/disk-space.ilbm", &outImageData, &outILBMPalette);
-    if (loaded)
+    /* PNG Test */
+    fileLoggerAddEntry("Testing PNG loading capability...");
+    UBYTE *pngImageData = NULL;
+    ILBMPalette *pngPalette = NULL;
+    BOOL pngLoaded = loadPNGToBitmapObject("PROGDIR:assets/orig_view.png", &pngImageData, &pngPalette);
+    if (pngLoaded)
     {
-        fileLoggerAddEntry("Image loaded successfully for display");
+        fileLoggerAddEntry("PNG image loaded successfully");
+        // For now, we don't use the PNG data in the UI, just testing the loader
+        free(pngImageData);
+        if (pngPalette)
+            freeILBMPalette(pngPalette);
     }
     else
     {
-        fileLoggerAddEntry("Failed to load image for display");
+        fileLoggerAddEntry("Failed to load PNG image");
     }
 
     /* clang-format off */
@@ -125,9 +130,9 @@ int main(void)
                 WindowContents, VGroup, GroupFrame,
                     
                     Child, VGroup,
-                        // Child, RectangleObject, MUIA_Width, 100, MUIA_Height, 50, MUIA_Background, MUII_ButtonBack, MUIA_Frame, "box", End, 
+                        Child, RectangleObject, MUIA_Width, 100, MUIA_Height, 50, MUIA_Background, MUII_ButtonBack, MUIA_Frame, "box", End, 
                         // Create the custom object with attributes in MUI style                                               
-                        Child, PTEImagePanelObject,  
+                        /*Child, PTEImagePanelObject,  
                             MUIA_Width, 100,
                             MUIA_Height, 50,
                             MUIA_Background, MUII_ButtonBack,
@@ -139,7 +144,8 @@ int main(void)
                             PTEA_ImageWidth, 256,
                             PTEA_EnableRGB, TRUE,
                             PTEA_ILBMPalette, outILBMPalette,
-                        End,
+                            PTEA_UseBGRA, TRUE,  
+                        End,*/
                     End,
 
                     Child, VGroup, GroupFrameT("Status Messages"),                    
@@ -194,20 +200,6 @@ int main(void)
     MUI_DisposeObject(app);
 
     cleanup_libs();
-
-    if (loaded)
-    {
-        if (outImageData)
-        {
-            free(outImageData);
-            fileLoggerAddDebugEntry("Freed ILBM image data");
-        }
-        if (outILBMPalette)
-        {
-            freeILBMPalette(outILBMPalette);
-            fileLoggerAddDebugEntry("Freed ILBM palette");
-        }
-    }
 
     // Close when done
     fileLoggerClose();

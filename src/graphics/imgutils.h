@@ -13,6 +13,7 @@
 #include "../utils/windowlogger.h"
 #include "../utils/filelogger.h"
 #include "graphics.h"
+#include "imgpngutils.h"
 
 /* Load ILBM image with palette information */
 BOOL loadILBMToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ILBMPalette **outPalette);
@@ -20,5 +21,9 @@ BOOL loadILBMToBitmapObject2(CONST_STRPTR filename);
 BOOL loadILBMToBitmapObjectRGB(CONST_STRPTR filename, UBYTE **outImageData);
 BOOL loadILBMToBitmapObjectRGB2(CONST_STRPTR filename);
 BOOL loadILBMToBitmapObjectRGB3(CONST_STRPTR filename, UBYTE **outImageData, ILBMPalette **outPalette);
+
+/* Load PNG image with palette information - see imgpngutils.h for details */
+BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ILBMPalette **outPalette);
+BOOL loadPNGToBitmapObjectRGB(CONST_STRPTR filename, UBYTE **outImageData);
 
 #endif

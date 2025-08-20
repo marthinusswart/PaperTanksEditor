@@ -1,4 +1,6 @@
-# Makefile for VBCC AmigaOS 3.1 with MUI 3.8 project (NDK 3.2)
+# Makefile for VBCC AmigaOS LDFLAGS = -L/opt/vbcc/targets/m68k-amigaos/lib \
+          -L/opt/sdk/MUI_3.8/lib \
+          -lamiga -lauto with MUI 3.8 project (NDK 3.2)
 
 # Compiler and tools
 CC = vc
@@ -35,14 +37,14 @@ MAIN_SOURCES = $(SRCDIR)/main.c
 UTILS_SOURCES = $(UTILSDIR)/filelogger.c $(UTILSDIR)/windowlogger.c
 VIEWS_SOURCES = $(VIEWSDIR)/aboutview.c
 WIDGETS_SOURCES = $(WIDGETSDIR)/pteimagepanel.c
-GRAPHICS_SOURCES = $(GRAPHICSDIR)/graphics.c $(GRAPHICSDIR)/imgpaletteutils.c $(GRAPHICSDIR)/imgutils.c
+GRAPHICS_SOURCES = $(GRAPHICSDIR)/graphics.c $(GRAPHICSDIR)/imgpaletteutils.c $(GRAPHICSDIR)/imgutils.c $(GRAPHICSDIR)/imgpngutils.c
 
 # Object files
 MAIN_OBJECTS = $(OBJDIR)/main.o
 UTILS_OBJECTS = $(OBJDIR)/utils/filelogger.o $(OBJDIR)/utils/windowlogger.o
 VIEWS_OBJECTS = $(OBJDIR)/views/aboutview.o
 WIDGETS_OBJECTS = $(OBJDIR)/widgets/pteimagepanel.o
-GRAPHICS_OBJECTS = $(OBJDIR)/graphics/graphics.o $(OBJDIR)/graphics/imgpaletteutils.o $(OBJDIR)/graphics/imgutils.o
+GRAPHICS_OBJECTS = $(OBJDIR)/graphics/graphics.o $(OBJDIR)/graphics/imgpaletteutils.o $(OBJDIR)/graphics/imgutils.o $(OBJDIR)/graphics/imgpngutils.o
 
 # All objects
 OBJECTS = $(MAIN_OBJECTS) $(UTILS_OBJECTS) $(VIEWS_OBJECTS) $(WIDGETS_OBJECTS) $(GRAPHICS_OBJECTS)
@@ -65,7 +67,9 @@ copy-assets:
 		else \
 			echo "  No ILBM assets found"; \
 		fi; \
-		find assets -type f -not -name "*.ilbm" -exec cp -f {} $(BINDIR)/assets/ \; 2>/dev/null || echo "  No other assets to copy"; \
+		# Find and copy PNG files if any exist \
+		find assets -name "*.png" -type f -exec cp -f {} $(BINDIR)/assets/ \; 2>/dev/null && echo "  Copied PNG assets" || echo "  No PNG assets found"; \
+		find assets -type f -not -name "*.ilbm" -not -name "*.png" -exec cp -f {} $(BINDIR)/assets/ \; 2>/dev/null || echo "  No other assets to copy"; \
 	else \
 		echo "  Assets directory not found"; \
 	fi
