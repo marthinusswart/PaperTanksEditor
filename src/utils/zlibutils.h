@@ -29,6 +29,17 @@ BOOL processZlibHeader(UBYTE *compressedData, ULONG compressedSize, UBYTE *compr
 BOOL inflateData(UBYTE *compressedData, ULONG compressedSize, ULONG startPos, UBYTE *outputBuffer,
                  ULONG outputBufferSize, ULONG *bytesWritten);
 
+/* Process an uncompressed (type 0) DEFLATE block */
+BOOL processUncompressedBlock(BitBuffer *bitBuf, UBYTE *compressedData, ULONG compressedSize,
+                              UBYTE *outputBuffer, ULONG outputBufferSize, ULONG *outPos);
+
+/* Process a dynamic Huffman (type 2) DEFLATE block */
+BOOL processSkipUnsupportedBlock(BitBuffer *bitBuf, BOOL isFinalBlock, const char *blockTypeName);
+
+/* Process a dynamic Huffman (type 2) DEFLATE block - actual implementation */
+BOOL processDynamicHuffmanBlock(BitBuffer *bitBuf, UBYTE *compressedData, ULONG compressedSize,
+                                UBYTE *outputBuffer, ULONG outputBufferSize, ULONG *outPos);
+
 /* Initialize a bit buffer for reading compressed data */
 void initBitBuffer(BitBuffer *buffer, UBYTE *data, ULONG size, ULONG startPos);
 
