@@ -37,7 +37,7 @@ typedef struct
 } PNGHeader;
 
 /* Load PNG image with palette information */
-BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ILBMPalette **outPalette);
+BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalette **outPalette);
 
 /* Load PNG directly to RGB bitmap - for 24-bit PNG files */
 BOOL loadPNGToBitmapObjectRGB(CONST_STRPTR filename, UBYTE **outImageData);

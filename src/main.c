@@ -26,7 +26,7 @@
 #include "views/aboutview.h"
 #include "widgets/pteimagepanel.h"
 #include "graphics/graphics.h"
-#include "graphics/imgutils.h"
+#include "graphics/imgpngutils.h"
 
 /* MUI Libraries */
 struct Library *MUIMasterBase = NULL;
@@ -45,7 +45,7 @@ int main(void)
     BOOL running = TRUE;
     UBYTE *outImageData = NULL;
     UBYTE *outRGBImageData = NULL;
-    ILBMPalette *outILBMPalette = NULL;
+    ImgPalette *outImgPalette = NULL;
 
     /* Initialize libraries */
     if (!init_libs())
@@ -93,19 +93,27 @@ int main(void)
     /* PNG Test */
     fileLoggerAddEntry("Testing PNG loading capability...");
     UBYTE *pngImageData = NULL;
-    ILBMPalette *pngPalette = NULL;
-    BOOL pngLoaded = loadPNGToBitmapObject("PROGDIR:assets/orig_view.png", &pngImageData, &pngPalette);
+    ImgPalette *pngPalette = NULL;
+    BOOL pngLoaded = loadPNGToBitmapObject("PROGDIR:assets/tank.png", &pngImageData, &pngPalette);
     if (pngLoaded)
     {
         fileLoggerAddEntry("PNG image loaded successfully");
-        // For now, we don't use the PNG data in the UI, just testing the loader
-        free(pngImageData);
-        if (pngPalette)
-            freeILBMPalette(pngPalette);
+        // We'll use this PNG data in our PTEImagePanel
     }
     else
     {
         fileLoggerAddEntry("Failed to load PNG image");
+        // Clean up in case of partial initialization
+        if (pngImageData)
+        {
+            free(pngImageData);
+            pngImageData = NULL;
+        }
+        if (pngPalette)
+        {
+            freeImgPalette(pngPalette);
+            pngPalette = NULL;
+        }
     }
 
     /* clang-format off */
@@ -132,20 +140,19 @@ int main(void)
                     Child, VGroup,
                         Child, RectangleObject, MUIA_Width, 100, MUIA_Height, 50, MUIA_Background, MUII_ButtonBack, MUIA_Frame, "box", End, 
                         // Create the custom object with attributes in MUI style                                               
-                        /*Child, PTEImagePanelObject,  
+                        Child, PTEImagePanelObject,  
                             MUIA_Width, 100,
                             MUIA_Height, 50,
                             MUIA_Background, MUII_ButtonBack,
                             PTEA_BorderColor, 1,
                             PTEA_BorderMargin, 1,
                             PTEA_DrawBorder, TRUE,
-                            PTEA_ImageData, outImageData,
-                            PTEA_ImageHeight, 256,
-                            PTEA_ImageWidth, 256,
-                            PTEA_EnableRGB, TRUE,
-                            PTEA_ILBMPalette, outILBMPalette,
-                            PTEA_UseBGRA, TRUE,  
-                        End,*/
+                            PTEA_ImageData, pngImageData,
+                            PTEA_ImageHeight, 100,
+                            PTEA_ImageWidth, 100,
+                            PTEA_ImgPalette, pngPalette,
+                            PTEA_IsPNG, TRUE,
+                        End,
                     End,
 
                     Child, VGroup, GroupFrameT("Status Messages"),                    
@@ -198,6 +205,12 @@ int main(void)
     /* Clean up */
     set(window, MUIA_Window_Open, FALSE);
     MUI_DisposeObject(app);
+
+    /* Free allocated resources */
+    if (pngImageData)
+        free(pngImageData);
+    if (pngPalette)
+        freeImgPalette(pngPalette);
 
     cleanup_libs();
 

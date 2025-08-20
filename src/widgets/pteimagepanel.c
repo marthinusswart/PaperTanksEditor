@@ -11,11 +11,9 @@ DISPATCHER(PTEImagePanelDispatcher);
 IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg);
 IPTR SAVEDS mDraw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg);
 void mDrawBorder(Object *obj, struct PTEImagePanelData *data);
-void mDrawRaw(Object *obj, struct PTEImagePanelData *data);
-void mDrawRaw2(Object *obj, struct PTEImagePanelData *data);
-void mDrawRGB(Object *obj, struct PTEImagePanelData *data);
 void mDrawRGB2(Object *obj, struct PTEImagePanelData *data);
 void mDrawRGB3(Object *obj, struct PTEImagePanelData *data);
+void mDrawPNG(Object *obj, struct PTEImagePanelData *data);
 LONG xget(Object *obj, ULONG attribute);
 Object *getWindowObject(Object *obj);
 
@@ -72,8 +70,9 @@ IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg)
     WORD imageHeight = 0;
     WORD imageWidth = 0;
     BOOL enableRGB = FALSE;
-    ILBMPalette *ilbmPalette = NULL;
+    ImgPalette *ilbmPalette = NULL;
     BOOL useBGRA = FALSE;
+    BOOL isPNG = FALSE;
 
     // Parse tag list for custom attributes
     struct TagItem *tags = msg->ops_AttrList;
@@ -122,12 +121,16 @@ IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg)
             enableRGB = (BOOL)walk->ti_Data;
             break;
 
-        case PTEA_ILBMPalette:
-            ilbmPalette = (ILBMPalette *)walk->ti_Data;
+        case PTEA_ImgPalette:
+            ilbmPalette = (ImgPalette *)walk->ti_Data;
             break;
 
         case PTEA_UseBGRA:
             useBGRA = (BOOL)walk->ti_Data;
+            break;
+
+        case PTEA_IsPNG:
+            isPNG = (BOOL)walk->ti_Data;
             break;
 
         default:
@@ -144,8 +147,9 @@ IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg)
     data->imageHeight = imageHeight;
     data->imageWidth = imageWidth;
     data->enableRGB = enableRGB;
-    data->ilbmPalette = ilbmPalette;
+    data->imgPalette = ilbmPalette;
     data->useBGRA = useBGRA;
+    data->isPNG = isPNG;
 
     return (ULONG)obj;
 }
@@ -189,163 +193,6 @@ void mDrawBorder(Object *obj, struct PTEImagePanelData *data)
     Draw(rp, left, top); // Close the loop
 }
 
-/***********************************************************************/
-// Function to draw raw image data for the PTEImagePanel
-void mDrawRaw(Object *obj, struct PTEImagePanelData *data)
-{
-    struct RastPort *rp;
-    WORD left, top, right, bottom;
-    char logMessage[256];
-
-    loggerFormatMessage(logMessage, "PTEImagePanel: we have image data at: 0x%08lx", (ULONG)data->imageData);
-    fileLoggerAddEntry(logMessage);
-
-    // Get RastPort
-    rp = _rp(obj);
-    if (!rp)
-    {
-        fileLoggerAddEntry("PTEImagePanel: rp failed...");
-        return;
-    }
-
-    // Calculate inset bounds
-    left = _mleft(obj) + data->borderMargin;
-    top = _mtop(obj) + data->borderMargin;
-    right = _mright(obj) - data->borderMargin;
-    bottom = _mbottom(obj) - data->borderMargin;
-
-    // Convert width/height to right/bottom
-    left += 5;
-    top += 5;
-    right = left + right - 1;
-    bottom = top + bottom - 1;
-
-    // Try to get the ViewPort for setting the palette
-    struct ViewPort *vp = NULL;
-    struct Screen *scr = NULL;
-
-    // First, try using the MUI _screen macro (valid between MUIM_Setup/Cleanup)
-    scr = _screen(obj);
-    if (scr)
-    {
-        vp = &scr->ViewPort;
-        fileLoggerAddEntry("Successfully got ViewPort using _screen() macro");
-    }
-    else
-    {
-        // If that didn't work, try getting the screen from the window
-        Object *win = getWindowObject(obj);
-        if (win)
-        {
-            // Try getting screen directly using MUIA_Window_Screen
-            get(win, MUIA_Window_Screen, &scr);
-            if (scr)
-            {
-                vp = &scr->ViewPort;
-                fileLoggerAddEntry("Successfully got ViewPort using MUIA_Window_Screen");
-            }
-            else
-            {
-                // Fall back to the original method
-                struct Window *window = NULL;
-                get(win, MUIA_Window_Window, &window);
-                if (window && window->WScreen)
-                {
-                    vp = &window->WScreen->ViewPort;
-                    fileLoggerAddEntry("Successfully got ViewPort from Window->WScreen");
-                }
-            }
-        }
-    }
-
-    // Final fallback to ViewPortAddress if we still don't have a ViewPort
-    if (!vp)
-    {
-        vp = ViewPortAddress(NULL);
-        if (vp)
-        {
-            fileLoggerAddEntry("Using ViewPortAddress(NULL) as fallback to get ViewPort");
-        }
-        else
-        {
-            fileLoggerAddEntry("WARNING: Could not get a ViewPort! Using system palette.");
-        }
-    }
-
-    // If we have a palette with colors, set it up
-    if (data->ilbmPalette && data->ilbmPalette->numColors > 0 && vp)
-    {
-        fileLoggerAddEntry("Setting up ILBM palette colors");
-
-        // Log the palette information
-        char penMapMsg[512] = "PenMap: ";
-        char numBuf[8];
-        int msgLen = 8; // length of "PenMap: "
-
-        // Only show first 32 entries to avoid huge logs
-        for (int i = 0; i < 32 && i < data->ilbmPalette->numColors; i++)
-        {
-            sprintf(numBuf, "%d ", data->ilbmPalette->penMap[i]);
-            strcat(penMapMsg + msgLen, numBuf);
-            msgLen += strlen(numBuf);
-        }
-        fileLoggerAddEntry(penMapMsg);
-
-        // Set the palette colors
-        for (ULONG i = 0; i < data->ilbmPalette->numColors && i < 32; i++)
-        {
-            // Each color is stored as RGB triplet in colorRegs
-            ULONG offset = i * 3;
-            UBYTE r = data->ilbmPalette->colorRegs[offset];
-            UBYTE g = data->ilbmPalette->colorRegs[offset + 1];
-            UBYTE b = data->ilbmPalette->colorRegs[offset + 2];
-
-            // Get the pen that corresponds to this color index
-            UBYTE pen = data->ilbmPalette->penMap[i];
-
-            // Convert 8-bit (0-255) to 32-bit (0-0xFFFFFFFF) for SetRGB32
-            ULONG r32 = ((ULONG)r << 24) | ((ULONG)r << 16) | ((ULONG)r << 8) | r;
-            ULONG g32 = ((ULONG)g << 24) | ((ULONG)g << 16) | ((ULONG)g << 8) | g;
-            ULONG b32 = ((ULONG)b << 24) | ((ULONG)b << 16) | ((ULONG)b << 8) | b;
-
-            // Set the color for this pen
-            SetRGB32(vp, pen, r32, g32, b32);
-
-            char logMessage[256];
-            loggerFormatMessage(logMessage, "Set pen %d to R=%d, G=%d, B=%d",
-                                pen, r, g, b);
-            fileLoggerAddEntry(logMessage);
-        }
-    }
-
-    // Draw image inside drawable area
-    for (WORD y = 0; y < data->imageHeight; y++)
-    {
-        for (WORD x = 0; x < data->imageWidth; x++)
-        {
-            LONG px = left + x;
-            LONG py = top + y;
-
-            // Clip to drawable area
-            if (px <= right && py <= bottom)
-            {
-                UBYTE pixelValue = data->imageData[y * data->imageWidth + x];
-
-                // Use the pen mapping if available
-                UBYTE pen = pixelValue;
-                if (data->ilbmPalette)
-                {
-                    pen = data->ilbmPalette->penMap[pixelValue];
-                }
-
-                SetAPen(rp, pen);
-                WritePixel(rp, px, py);
-            }
-        }
-    }
-}
-
-/***********************************************************************/
 // Function to draw RGB image data for the PTEImagePanel
 void mDrawRGB(Object *obj, struct PTEImagePanelData *data)
 {
@@ -573,12 +420,14 @@ IPTR SAVEDS mDraw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
 
     if (data->imageData != NULL)
     {
-        if (!data->enableRGB)
+        if (data->isPNG)
+        {
+            // Use specialized PNG drawing function
+            mDrawPNG(obj, data);
+        }
+        else if (!data->enableRGB)
         {
             // Call the new optimized function for testing
-            // Comment the next line and uncomment the following line to use the original function
-            mDrawRaw2(obj, data);
-            // mDrawRaw(obj, data);
         }
         else
         {
@@ -597,6 +446,7 @@ IPTR SAVEDS mDraw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
     }
     return 0;
 }
+
 /***********************************************************************/
 
 /***********************************************************************/
@@ -718,34 +568,37 @@ void mDrawRGB2(Object *obj, struct PTEImagePanelData *data)
                 // Calculate offset into RGB chunky data (3 bytes per pixel)
                 ULONG offset = (y * data->imageWidth + x) * 3;
 
-                // Get RGB components (bytes are packed R,G,B consecutively)
-                UBYTE r = data->imageData[offset];
-                UBYTE g = data->imageData[offset + 1];
-                UBYTE b = data->imageData[offset + 2];
+                // Get RGB components
+                UBYTE r = data->imageData[offset];     // R
+                UBYTE g = data->imageData[offset + 1]; // G
+                UBYTE b = data->imageData[offset + 2]; // B
 
-                // In a true 24-bit environment, we can directly use these RGB values
-                // without the overhead of ObtainBestPen/ReleasePen for each pixel
+                // Convert 8-bit RGB to 32-bit RGB required by SetRGB32
+                ULONG r32 = ((ULONG)r << 24) | ((ULONG)r << 16) | ((ULONG)r << 8) | r;
+                ULONG g32 = ((ULONG)g << 24) | ((ULONG)g << 16) | ((ULONG)g << 8) | g;
+                ULONG b32 = ((ULONG)b << 24) | ((ULONG)b << 16) | ((ULONG)b << 8) | b;
 
-                // For Amiga systems, we can use WriteRGBPixel directly if available
-                // or use a system-specific optimized method for direct RGB drawing
+                if (vp)
+                {
+                    // Set the color for a temporary pen in the viewport
+                    SetRGB32(vp, 5, r32, g32, b32);
 
-                // MUI in 24-bit mode typically has a way to set RGB values directly
-                // This is a simplified approach using the screen's color map directly
-                ULONG colorValue = (r << 16) | (g << 8) | b;
-
-                // Set the corresponding color in the pen array
-                // This works because in 24-bit mode, we have direct color mapping
-                SetAPen(rp, colorValue & 0xFFFFFF);
-                WritePixel(rp, px, py);
+                    // Draw with the temporary pen
+                    SetAPen(rp, 5);
+                    WritePixel(rp, px, py);
+                }
+                else
+                {
+                    // Fallback method without viewport
+                    SetAPen(rp, r & 0xFF);
+                    WritePixel(rp, px, py);
+                }
             }
         }
     }
 
     fileLoggerAddEntry("24-bit direct RGB drawing completed successfully - no pen allocation used");
 }
-
-/***********************************************************************/
-
 /**
  * New RGB drawing function that supports both RGBA and BGRA color orders
  * Adds useBGRA flag to support Amiga environments that use BGRA ordering
@@ -1086,29 +939,25 @@ Object *getWindowObject(Object *obj)
     return win;
 }
 
-/***********************************************************************/
-// Function to draw raw image data for the PTEImagePanel with optimized 65K color handling
-void mDrawRaw2(Object *obj, struct PTEImagePanelData *data)
+/* Draw PNG specific function optimized for 24-bit desktop environment */
+void mDrawPNG(Object *obj, struct PTEImagePanelData *data)
 {
     struct RastPort *rp;
     WORD left, top, right, bottom;
     char logMessage[256];
     struct ViewPort *vp = NULL;
     struct Screen *scr = NULL;
-    struct ColorMap *cm = NULL;
-    LONG *allocatedPens = NULL;
-    ULONG numColors = 0;
-    BOOL isHighColor = FALSE;
-    ULONG i; // Loop counter
 
-    loggerFormatMessage(logMessage, "PTEImagePanel: mDrawRaw2 called with image data at: 0x%08lx", (ULONG)data->imageData);
+    fileLoggerAddEntry("PTEImagePanel: Drawing PNG image data in 24-bit mode");
+    loggerFormatMessage(logMessage, "PNG image data at: 0x%08lx, dimensions: %dx%d",
+                        (ULONG)data->imageData, data->imageWidth, data->imageHeight);
     fileLoggerAddEntry(logMessage);
 
     // Get RastPort
     rp = _rp(obj);
     if (!rp)
     {
-        fileLoggerAddEntry("PTEImagePanel: rp failed...");
+        fileLoggerAddEntry("PTEImagePanel: RastPort unavailable, cannot draw PNG");
         return;
     }
 
@@ -1121,205 +970,151 @@ void mDrawRaw2(Object *obj, struct PTEImagePanelData *data)
     // Convert width/height to right/bottom
     left += 5;
     top += 5;
-    right = left + right - 1;
-    bottom = top + bottom - 1;
+    right = left + data->imageWidth - 1;
+    bottom = top + data->imageHeight - 1;
 
-    // Try to get the ViewPort and Screen for color management
-    // First, try using the MUI _screen macro (valid between MUIM_Setup/Cleanup)
+    // Check bounds against drawable area
+    if (right > _mright(obj) - data->borderMargin)
+        right = _mright(obj) - data->borderMargin;
+    if (bottom > _mbottom(obj) - data->borderMargin)
+        bottom = _mbottom(obj) - data->borderMargin;
+
+    // Get the screen from the window - this is required for direct RGB drawing
+    Object *win = getWindowObject(obj);
+    if (!win)
+    {
+        fileLoggerAddEntry("PTEImagePanel: Could not get window object, cannot draw");
+        return;
+    }
+
+    // First try to get screen directly using MUI macros
     scr = _screen(obj);
     if (scr)
     {
+        fileLoggerAddEntry("Successfully got screen using _screen() macro");
         vp = &scr->ViewPort;
-        cm = vp->ColorMap;
-        fileLoggerAddEntry("Successfully got ViewPort and ColorMap using _screen() macro");
     }
     else
     {
-        // If that didn't work, try getting the screen from the window
-        Object *win = getWindowObject(obj);
-        if (win)
+        // Try getting window structure if macro didn't work
+        struct Window *window = NULL;
+        get(win, MUIA_Window_Window, &window);
+
+        if (window && window->WScreen)
         {
-            // Try getting screen directly using MUIA_Window_Screen
+            scr = window->WScreen;
+            vp = &scr->ViewPort;
+            fileLoggerAddEntry("Successfully got screen from Window structure");
+        }
+        else
+        {
+            // Try getting screen directly
             get(win, MUIA_Window_Screen, &scr);
             if (scr)
             {
                 vp = &scr->ViewPort;
-                cm = vp->ColorMap;
-                fileLoggerAddEntry("Successfully got ViewPort and ColorMap using MUIA_Window_Screen");
+                fileLoggerAddEntry("Successfully got screen from MUIA_Window_Screen");
             }
             else
             {
-                fileLoggerAddEntry("ERROR: Could not get ViewPort from MUIA_Window_Screen! Not drawing anything.");
-                return; // Return without drawing anything
+                // In case we can't get the screen, we'll use a fallback approach for 24-bit drawing
+                fileLoggerAddEntry("WARNING: Could not get screen structure, using direct 24-bit drawing without screen info");
+                // We'll continue without screen/viewport information
             }
         }
     }
 
-    // Check if we have a ViewPort
-    if (!vp)
-    {
-        fileLoggerAddEntry("ERROR: No ViewPort available! Not drawing anything.");
-        return; // Return without drawing anything
-    }
+    fileLoggerAddEntry("24-bit PNG drawing using SetRGB32 with basic BGRA colors");
 
-    // Check if we have a ColorMap
-    if (!cm)
+    // For best performance, we'll use the ViewPort with SetRGB32
+    if (vp)
     {
-        fileLoggerAddEntry("ERROR: No ColorMap available! Not drawing anything.");
-        return; // Return without drawing anything
-    }
+        fileLoggerAddEntry("Using 24-bit direct RGB rendering with ViewPort");
 
-    // Check if we're in high-color mode (65K colors)
-    if (scr)
-    {
-        ULONG depth = GetBitMapAttr(scr->RastPort.BitMap, BMA_DEPTH);
-        if (depth >= 15)
+        // Direct RGB drawing using the actual image data
+        for (WORD y = 0; y < data->imageHeight; y++)
         {
-            isHighColor = TRUE;
-            loggerFormatMessage(logMessage, "Detected high-color mode with depth: %ld", depth);
-            fileLoggerAddEntry(logMessage);
-        }
-    }
-
-    // For testing purposes, assume we're always in high-color mode
-    isHighColor = TRUE;
-
-    // Check if we have image data
-    if (!data->imageData)
-    {
-        fileLoggerAddEntry("ERROR: No image data to draw! Not drawing anything.");
-        return; // Return without drawing anything
-    }
-
-    // Check if we have palette data
-    if (!data->ilbmPalette || data->ilbmPalette->numColors <= 0)
-    {
-        fileLoggerAddEntry("ERROR: No palette data or empty palette! Not drawing anything.");
-        return; // Return without drawing anything
-    }
-
-    // If we have a palette and ColorMap, allocate pens for 65K color mode
-    if (cm && isHighColor)
-    {
-        fileLoggerAddEntry("65K color mode: Allocating pens for palette colors");
-
-        numColors = data->ilbmPalette->numColors;
-        if (numColors > 256)
-            numColors = 256; // Safety cap
-
-        // Allocate memory for pen tracking
-        allocatedPens = AllocVec(numColors * sizeof(LONG), MEMF_CLEAR);
-        if (!allocatedPens)
-        {
-            fileLoggerAddEntry("ERROR: Failed to allocate memory for pen tracking! Not drawing anything.");
-            return; // Return without drawing anything
-        }
-
-        // Initialize all pen entries to -1 (invalid)
-        for (i = 0; i < numColors; i++)
-        {
-            allocatedPens[i] = -1;
-        }
-
-        // Obtain pens for each color in the palette
-        for (i = 0; i < numColors; i++)
-        {
-            // Each color is stored as RGB triplet in colorRegs
-            ULONG offset = i * 3;
-            UBYTE r = data->ilbmPalette->colorRegs[offset];
-            UBYTE g = data->ilbmPalette->colorRegs[offset + 1];
-            UBYTE b = data->ilbmPalette->colorRegs[offset + 2];
-
-            // Convert 8-bit (0-255) to 32-bit shifted values for ObtainBestPen
-            ULONG r32 = (ULONG)r << 24;
-            ULONG g32 = (ULONG)g << 24;
-            ULONG b32 = (ULONG)b << 24;
-
-            // Try to obtain an exact match first
-            allocatedPens[i] = ObtainBestPen(cm, r32, g32, b32, TAG_DONE);
-
-            if (allocatedPens[i] != -1)
+            for (WORD x = 0; x < data->imageWidth; x++)
             {
-                loggerFormatMessage(logMessage, "Allocated pen %ld for color %ld (R=%d, G=%d, B=%d)",
-                                    allocatedPens[i], i, r, g, b);
-                fileLoggerAddDebugEntry(logMessage);
-            }
-            else
-            {
-                // If we can't get a pen, use pen 1 as fallback
-                allocatedPens[i] = 1;
-                loggerFormatMessage(logMessage, "Failed to allocate pen for color %ld, using pen 1", i);
-                fileLoggerAddEntry(logMessage);
-            }
-        }
+                LONG px = left + x;
+                LONG py = top + y;
 
-        // Check if we allocated at least one pen successfully
-        BOOL atLeastOnePenAllocated = FALSE;
-        for (i = 0; i < numColors; i++)
-        {
-            if (allocatedPens[i] != -1)
-            {
-                atLeastOnePenAllocated = TRUE;
-                break;
-            }
-        }
-
-        if (!atLeastOnePenAllocated)
-        {
-            fileLoggerAddEntry("ERROR: Failed to allocate any pens! Not drawing anything.");
-            FreeVec(allocatedPens);
-            return; // Return without drawing anything
-        }
-
-        fileLoggerAddEntry("Successfully allocated pens for high-color mode"); // Optimized drawing - batch by color to minimize pen changes
-        fileLoggerAddEntry("Drawing image using high-color optimized method");
-
-        // For each unique color, draw all pixels of that color
-        for (i = 0; i < numColors; i++)
-        {
-            if (allocatedPens[i] != -1)
-            {
-                SetAPen(rp, allocatedPens[i]);
-
-                // Draw all pixels that match this color index
-                for (WORD y = 0; y < data->imageHeight; y++)
+                // Clip to drawable area
+                if (px <= right && py <= bottom)
                 {
-                    for (WORD x = 0; x < data->imageWidth; x++)
-                    {
-                        LONG px = left + x;
-                        LONG py = top + y;
+                    // Calculate offset into RGB chunky data (3 bytes per pixel)
+                    ULONG offset = (y * data->imageWidth + x) * 3;
 
-                        // Clip to drawable area
-                        if (px <= right && py <= bottom)
-                        {
-                            UBYTE pixelValue = data->imageData[y * data->imageWidth + x];
+                    // Get RGB components (stored as RGB)
+                    UBYTE r = data->imageData[offset];     // R
+                    UBYTE g = data->imageData[offset + 1]; // G
+                    UBYTE b = data->imageData[offset + 2]; // B
 
-                            // Draw this pixel if it matches the current color
-                            if (pixelValue == i)
-                            {
-                                WritePixel(rp, px, py);
-                            }
-                        }
-                    }
+                    // Convert 8-bit RGB to 32-bit RGB required by SetRGB32
+                    ULONG r32 = ((ULONG)r << 24) | ((ULONG)r << 16) | ((ULONG)r << 8) | r;
+                    ULONG g32 = ((ULONG)g << 24) | ((ULONG)g << 16) | ((ULONG)g << 8) | g;
+                    ULONG b32 = ((ULONG)b << 24) | ((ULONG)b << 16) | ((ULONG)b << 8) | b;
+
+                    // Set the color for a temporary pen in the viewport
+                    SetRGB32(vp, 5, r32, g32, b32);
+
+                    // Draw with the temporary pen
+                    SetAPen(rp, 5);
+                    WritePixel(rp, px, py);
                 }
             }
         }
 
-        // Release all allocated pens
-        fileLoggerAddEntry("Releasing allocated pens");
-
-        for (i = 0; i < numColors; i++)
-        {
-            if (allocatedPens[i] != -1 && allocatedPens[i] != 1) // Don't release pen 1
-            {
-                ReleasePen(cm, allocatedPens[i]);
-            }
-        }
-
-        FreeVec(allocatedPens);
-        return; // Exit early, we've handled the drawing
+        fileLoggerAddEntry("Completed drawing with SetRGB32 for direct RGB rendering");
+    }
+    else
+    {
+        fileLoggerAddEntry("No ViewPort available - fallback to direct drawing");
+        // Fallback handled below
     }
 
-    // If we get here, we don't have the right conditions to draw
-    fileLoggerAddEntry("ERROR: Cannot draw in high-color mode. Missing palette, colormap, or not in high-color mode.");
+    // For 24-bit color direct drawing with ViewPort
+    if (vp)
+    {
+        // Log success about ViewPort usage
+        fileLoggerAddEntry("Using ViewPort for 24-bit direct RGB drawing");
+    }
+    else
+    {
+        // If we're in this section, we need a fallback drawing method
+        fileLoggerAddEntry("No ViewPort available, using fallback drawing method");
+
+        // Direct RGB drawing as a fallback method
+        for (WORD y = 0; y < data->imageHeight; y++)
+        {
+            for (WORD x = 0; x < data->imageWidth; x++)
+            {
+                LONG px = left + x;
+                LONG py = top + y;
+
+                // Clip to drawable area
+                if (px <= right && py <= bottom)
+                {
+                    // Calculate offset into RGB chunky data (3 bytes per pixel)
+                    ULONG offset = (y * data->imageWidth + x) * 3;
+
+                    // Get RGB components from our 24-bit RGB data
+                    UBYTE r = data->imageData[offset];     // R
+                    UBYTE g = data->imageData[offset + 1]; // G
+                    UBYTE b = data->imageData[offset + 2]; // B
+
+                    // Create a pen value suitable for SetAPen (depends on the platform)
+                    // This is a fallback that may not work perfectly on all systems
+                    ULONG penValue = ((ULONG)r << 16) | ((ULONG)g << 8) | b;
+
+                    // Use the RGB value directly as a pen number
+                    // This may not display correctly on all systems without SetRGB32
+                    SetAPen(rp, penValue & 0xFF);
+                    WritePixel(rp, px, py);
+                }
+            }
+        }
+    }
+
+    fileLoggerAddEntry("PNG drawing completed successfully");
 }

@@ -7,7 +7,7 @@
 #include "graphics.h"
 
 /* Initialize a palette structure */
-void initILBMPalette(ILBMPalette *palette)
+void initImgPalette(ImgPalette *palette)
 {
     if (palette)
     {
@@ -25,7 +25,7 @@ void initILBMPalette(ILBMPalette *palette)
 }
 
 /* Free resources allocated for a palette */
-void freeILBMPalette(ILBMPalette *palette)
+void freeImgPalette(ImgPalette *palette)
 {
     if (palette)
     {

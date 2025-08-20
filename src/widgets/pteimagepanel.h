@@ -44,8 +44,9 @@ extern struct MUI_CustomClass *pteImagePanelClass;
 #define PTEA_ImageWidth     0x30400005
 #define PTEA_ImageHeight    0x30400006
 #define PTEA_EnableRGB      0x30400007
-#define PTEA_ILBMPalette    0x30400008
+#define PTEA_ImgPalette     0x30400008
 #define PTEA_UseBGRA        0x30400009
+#define PTEA_IsPNG          0x3040000A
 
 /* clang-format on */
 
@@ -58,8 +59,9 @@ struct PTEImagePanelData
     WORD imageWidth;
     WORD imageHeight;
     BOOL enableRGB;
-    ILBMPalette *ilbmPalette;
+    ImgPalette *imgPalette;
     BOOL useBGRA; /* Use BGRA order instead of RGBA */
+    BOOL isPNG;   /* Indicates the image data is from a PNG file */
 };
 
 extern void initializePTEImagePanel(void);

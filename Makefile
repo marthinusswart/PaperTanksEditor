@@ -37,14 +37,14 @@ MAIN_SOURCES = $(SRCDIR)/main.c
 UTILS_SOURCES = $(UTILSDIR)/filelogger.c $(UTILSDIR)/windowlogger.c
 VIEWS_SOURCES = $(VIEWSDIR)/aboutview.c
 WIDGETS_SOURCES = $(WIDGETSDIR)/pteimagepanel.c
-GRAPHICS_SOURCES = $(GRAPHICSDIR)/graphics.c $(GRAPHICSDIR)/imgpaletteutils.c $(GRAPHICSDIR)/imgutils.c $(GRAPHICSDIR)/imgpngutils.c
+GRAPHICS_SOURCES = $(GRAPHICSDIR)/graphics.c $(GRAPHICSDIR)/imgpaletteutils.c $(GRAPHICSDIR)/imgpngutils.c
 
 # Object files
 MAIN_OBJECTS = $(OBJDIR)/main.o
 UTILS_OBJECTS = $(OBJDIR)/utils/filelogger.o $(OBJDIR)/utils/windowlogger.o
 VIEWS_OBJECTS = $(OBJDIR)/views/aboutview.o
 WIDGETS_OBJECTS = $(OBJDIR)/widgets/pteimagepanel.o
-GRAPHICS_OBJECTS = $(OBJDIR)/graphics/graphics.o $(OBJDIR)/graphics/imgpaletteutils.o $(OBJDIR)/graphics/imgutils.o $(OBJDIR)/graphics/imgpngutils.o
+GRAPHICS_OBJECTS = $(OBJDIR)/graphics/graphics.o $(OBJDIR)/graphics/imgpaletteutils.o $(OBJDIR)/graphics/imgpngutils.o
 
 # All objects
 OBJECTS = $(MAIN_OBJECTS) $(UTILS_OBJECTS) $(VIEWS_OBJECTS) $(WIDGETS_OBJECTS) $(GRAPHICS_OBJECTS)
@@ -121,7 +121,9 @@ $(OBJDIR)/widgets/%.o: $(WIDGETSDIR)/%.c
 # Clean build artifacts
 clean:
 	@echo "Cleaning build artifacts..."
-	@rm -rf $(OBJDIR)/* $(BINDIR)/* 2>/dev/null || true
+	@rm -rf $(OBJDIR)/* 2>/dev/null || true
+	@rm -f $(BINDIR)/main 2>/dev/null || true
+	@echo "Removed object files and main application binary"
 
 # Force rebuild
 rebuild: clean all
