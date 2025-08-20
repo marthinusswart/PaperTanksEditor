@@ -40,6 +40,6 @@ BOOL processSkipUnsupportedBlock(BitBuffer *bitBuf, BOOL isFinalBlock, const cha
 void initBitBuffer(BitBuffer *buffer, UBYTE *data, ULONG size, ULONG startPos);
 
 /* Read bits from the bit buffer (LSB first) */
-ULONG readBits(BitBuffer *buffer, UBYTE numBits);
+BOOL readBits(BitBuffer *buffer, UBYTE numBits, UBYTE *value);
 
 #endif /* ZLIBUTILS_H */

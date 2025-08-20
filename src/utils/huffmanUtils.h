@@ -24,11 +24,32 @@ typedef struct HuffmanNode
     ULONG code;  /* The Huffman code */
 } HuffmanNode;
 
+/* Huffman code table structure */
+typedef struct HuffmanTable
+{
+    UWORD maxCodes;     /* Maximum number of codes in the table */
+    UBYTE maxBits;      /* Maximum bit length for codes */
+    HuffmanNode *nodes; /* Array of Huffman nodes */
+} HuffmanTable;
+
 /* Process a dynamic Huffman (type 2) DEFLATE block */
 BOOL processDynamicHuffmanBlock(BitBuffer *bitBuf, UBYTE *compressedData, ULONG compressedSize,
                                 UBYTE *outputBuffer, ULONG outputBufferSize, ULONG *outPos);
 
 /* Get the code length code order for dynamic Huffman decoding */
 const UBYTE *getCodeLengthCodeOrder(void);
+
+/* Build a Huffman tree from code lengths */
+BOOL buildHuffmanTreeFromCodeLengths(UBYTE *codeLengths, ULONG numCodes, HuffmanTable *table);
+
+/* Decode a single value using a Huffman table */
+BOOL decodeHuffmanValue(BitBuffer *bitBuf, HuffmanTable *table, UWORD *value);
+
+/* Decode LZ77 compressed data using Huffman tables */
+BOOL decodeLZ77Data(BitBuffer *bitBuf, HuffmanTable *literalTable, HuffmanTable *distanceTable,
+                    UBYTE *outputBuffer, ULONG outputBufferSize, ULONG *outPos);
+
+/* Free resources allocated for a Huffman table */
+void freeHuffmanTable(HuffmanTable *table);
 
 #endif /* HUFFMAN_UTILS_H */

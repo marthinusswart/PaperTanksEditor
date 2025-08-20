@@ -109,14 +109,14 @@ void initBitBuffer(BitBuffer *buffer, UBYTE *data, ULONG size, ULONG startPos)
 }
 
 /* Read bits from the bit buffer (LSB first) */
-ULONG readBits(BitBuffer *buffer, UBYTE numBits)
+BOOL readBits(BitBuffer *buffer, UBYTE numBits, UBYTE *value)
 {
-    ULONG value = 0;
+    ULONG result = 0;
     UBYTE bitsRead = 0;
 
     /* Make sure we don't read past the end of the buffer */
-    if (buffer->pos >= buffer->size)
-        return 0;
+    if (buffer->pos >= buffer->size || !value)
+        return FALSE;
 
     /* Read bits one at a time */
     while (bitsRead < numBits)
@@ -124,8 +124,8 @@ ULONG readBits(BitBuffer *buffer, UBYTE numBits)
         /* Read the current bit */
         UBYTE bit = (buffer->data[buffer->pos] >> buffer->bitPos) & 1;
 
-        /* Add the bit to our value */
-        value |= (bit << bitsRead);
+        /* Add the bit to our result */
+        result |= (bit << bitsRead);
 
         /* Move to the next bit */
         buffer->bitPos++;
@@ -140,11 +140,12 @@ ULONG readBits(BitBuffer *buffer, UBYTE numBits)
 
             /* Check if we've reached the end of the buffer */
             if (buffer->pos >= buffer->size && bitsRead < numBits)
-                return value; /* Return what we have so far */
+                return FALSE; /* Not enough bits available */
         }
     }
 
-    return value;
+    *value = (UBYTE)result;
+    return TRUE;
 }
 
 /* Process the zlib header (first 2 bytes)
@@ -251,7 +252,7 @@ BOOL inflateData(UBYTE *compressedData, ULONG compressedSize, ULONG startPos, UB
     char logMessage[256];
     ULONG outPos = 0; /* Current position in output */
     BOOL isFinalBlock = FALSE;
-    UBYTE blockType;
+    UBYTE blockType, bitValue;
     ULONG len, nlen;
     BitBuffer bitBuf;
 
@@ -266,8 +267,12 @@ BOOL inflateData(UBYTE *compressedData, ULONG compressedSize, ULONG startPos, UB
     while (!isFinalBlock && bitBuf.pos < compressedSize && outPos < outputBufferSize)
     {
         /* Read block header (3 bits) */
-        isFinalBlock = readBits(&bitBuf, 1) != 0;
-        blockType = readBits(&bitBuf, 2);
+        if (!readBits(&bitBuf, 1, &bitValue))
+            return FALSE;
+        isFinalBlock = bitValue != 0;
+
+        if (!readBits(&bitBuf, 2, &blockType))
+            return FALSE;
 
         sprintf(logMessage, "Block header: Final=%d, Type=%d", isFinalBlock, blockType);
         fileLoggerAddDebugEntry(logMessage);

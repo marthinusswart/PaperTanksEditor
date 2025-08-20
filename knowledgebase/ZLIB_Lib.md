@@ -1,4 +1,75 @@
-# Puff.C
+# ZLIB and DEFLATE Decompression Implementation
+
+This document describes the implementation of the ZLIB and DEFLATE decompression algorithms in our codebase for AmigaOS 3.1.
+
+## Overview
+
+ZLIB is a data compression format that uses the DEFLATE algorithm internally. This implementation provides basic functionality for decompressing ZLIB data, particularly as used in PNG files.
+
+## Components
+
+### 1. ZLIB Header Processing
+
+The ZLIB header (first 2 bytes) is processed according to RFC 1950:
+
+- CMF (byte 0): Compression Method and Compression Info
+- FLG (byte 1): FCHECK, FDICT, and FLEVEL fields
+
+### 2. DEFLATE Block Types
+
+DEFLATE data consists of blocks, which can be of three types:
+
+- Type 0: Uncompressed data
+- Type 1: Compressed with fixed Huffman codes
+- Type 2: Compressed with dynamic Huffman codes
+
+### 3. Huffman Coding
+
+Huffman coding is used for efficient compression by using variable-length codes where more frequent symbols have shorter codes. Our implementation includes:
+
+- Building canonical Huffman trees from code lengths
+- Decoding values using Huffman trees
+- Processing dynamic Huffman blocks
+
+### 4. LZ77 Decompression
+
+LZ77 compression stores data as literal values or as length-distance pairs (backreferences) that refer to previously decoded data.
+
+The decompression algorithm works as follows:
+
+1. Decode a value using the literal/length Huffman tree
+2. If the value is < 256, it's a literal byte to be output directly
+3. If the value is 256, it's the end-of-block marker
+4. If the value is > 256, it represents a length code (257-285):
+   - Compute the actual length using base values and extra bits
+   - Decode a distance code using the distance Huffman tree
+   - Compute the actual distance using base values and extra bits
+   - Copy 'length' bytes starting from (current position - distance)
+
+## Implementation Details
+
+### Huffman Tree Construction
+
+The canonical Huffman tree is built in these steps:
+
+1. Count the number of codes for each bit length
+2. Calculate the smallest code for each bit length
+3. Assign codes to each symbol based on its bit length
+
+### LZ77 Backreferences
+
+Length and distance values are computed using base tables and extra bits:
+
+- Length is calculated from a base value (3-258) plus optional extra bits
+- Distance is calculated from a base value (1-32768) plus optional extra bits
+
+## References
+
+- [RFC 1950 - ZLIB Compressed Data Format Specification](https://tools.ietf.org/html/rfc1950)
+- [RFC 1951 - DEFLATE Compressed Data Format Specification](https://tools.ietf.org/html/rfc1951)
+- [PNG Specification](http://www.libpng.org/pub/png/spec/1.2/PNG-Compression.html)
+
+# Reference Implementation: Puff.C
 
 ```C
 /*
