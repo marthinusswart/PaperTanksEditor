@@ -58,12 +58,11 @@ all: directories $(TARGET) copy-assets
 
 # Copy assets to bin directory
 copy-assets:
-	@echo "Copying assets..."
+	@echo "Copying PNG assets with directory structure preserved..."
 	@if [ -d "assets" ]; then \
 		mkdir -p $(BINDIR)/assets; \
-		# Find and copy PNG files if any exist \
-		find assets -name "*.png" -type f -exec cp -f {} $(BINDIR)/assets/ \; 2>/dev/null && echo "  Copied PNG assets" || echo "  No PNG assets found"; \
-		find assets -type f -not -name "*.png" -exec cp -f {} $(BINDIR)/assets/ \; 2>/dev/null || echo "  No other assets to copy"; \
+		find assets -name "*.png" -type f -exec cp --parents {} $(BINDIR)/ \; ; \
+		echo "  PNG assets copied"; \
 	else \
 		echo "  Assets directory not found"; \
 	fi

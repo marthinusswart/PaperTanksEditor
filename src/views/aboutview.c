@@ -1,28 +1,11 @@
 #include "aboutview.h"
 
-void createAboutView(Object *app)
+void createAboutView(Object *app, UBYTE *pngImageData, ImgPalette *pngPalette)
 {
     APTR list;
-    Object *customImg;
     static const char IN_About[] = "Paper Tanks Editor is the editor to create new levels and scenarios for the game Paper Tanks.\
                                     \nThis editor can also edit Tanks and add new ones.\
                                     \nThis editor is written in C using the MUI GUI toolkit.";
-
-    UBYTE *logo = NULL;
-    // if (!loadILBMToBitmapObject("PROGDIR:assets/HardDisk.mbr", &logo))
-    // {
-    //     loggerAddEntry("Failed to load logo image. Using placeholder.");
-    // }
-    // else
-    // {
-    //     loggerAddEntry("Logo image loaded successfully.");
-    //     // Create custom image area
-    //     if (!createCustomImageArea(logo, 14, 8, &customImg))
-    //     {
-    //         loggerAddEntry("Failed to create custom image area for logo.");
-    //         logo = NULL; // Clear logo if creation failed
-    //     };
-    // }
 
     windowLoggerAddEntry("Creating About View...");
 
@@ -33,10 +16,24 @@ void createAboutView(Object *app)
         VGroup, GroupFrame,
             MUIA_Group_Spacing, 4,
                 Child, HGroup,
-                    Child, VGroup,                    
-                        Child, logo ? customImg : ScaledImage(MUII_HardDisk, 14, 8),
-                        Child, RectangleObject,
-                    End, // Top area placeholder
+                    Child, VGroup,
+                        Child, HGroup,                      
+                            Child, PTEImagePanelObject,                              
+                                MUIA_Background, MUII_ButtonBack,
+                                PTEA_BorderColor, 1,
+                                PTEA_BorderMargin, 1,
+                                PTEA_DrawBorder, FALSE,
+                                PTEA_ImageData, pngImageData,
+                                PTEA_ImageHeight, 25,
+                                PTEA_ImageWidth, 25,
+                                PTEA_ImgPalette, pngPalette,
+                                PTEA_IsPNG, TRUE,
+                            End,
+                            Child, VSpace (35),
+                        End,
+                        Child, HSpace (35),                        
+                        // Child, ScaledImage(MUII_HardDisk, 14, 8),
+                        Child, RectangleObject, End,
                 End,
                 Child, list = List(IN_About),
             End,

@@ -12,10 +12,12 @@
 #include "viewtypes.h"
 #include "../widgets/listwidgets.h"
 #include "../widgets/imagewidgets.h"
+#include "../widgets/pteimagepanel.h"
 #include "../graphics/imgpngutils.h"
 #include "../utils/windowlogger.h"
 #include "../utils/filelogger.h"
+#include "../graphics/graphics.h"
 
-extern void createAboutView(Object *app);
+extern void createAboutView(Object *app, UBYTE *pngImageData, ImgPalette *pngPalette);
 
 #endif
