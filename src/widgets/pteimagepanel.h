@@ -58,10 +58,10 @@ struct PTEImagePanelData
     UBYTE *imageData;
     WORD imageWidth;
     WORD imageHeight;
-    BOOL enableRGB;
     ImgPalette *imgPalette;
-    BOOL useBGRA; /* Use BGRA order instead of RGBA */
-    BOOL isPNG;   /* Indicates the image data is from a PNG file */
+    BOOL useBGRA;     /* Use BGRA order instead of RGBA */
+    BOOL isPNG;       /* Indicates the image data is from a PNG file */
+    UBYTE *transMask; /* Transparency mask, 1 bit per pixel, 1=transparent */
 };
 
 extern void initializePTEImagePanel(void);

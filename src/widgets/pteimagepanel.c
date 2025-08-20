@@ -27,20 +27,20 @@ static ULONG STACKARGS DoSuperNew(struct IClass *const cl, Object *const obj, co
 struct MUI_CustomClass *createPTEImagePanelClass(void)
 {
     char logMessage[256];
-    fileLoggerAddEntry("PTEImagePanel: Creating MUI_CreateCustomClass");
+    fileLoggerAddDebugEntry("PTEImagePanel: Creating MUI_CreateCustomClass");
     loggerFormatMessage(logMessage, "Dispatcher address: 0x%08lx", PTEImagePanelDispatcher);
-    fileLoggerAddEntry(logMessage);
+    fileLoggerAddDebugEntry(logMessage);
     struct MUI_CustomClass *obj = MUI_CreateCustomClass(NULL, MUIC_Rectangle, NULL, sizeof(struct PTEImagePanelData), PTEImagePanelDispatcher);
     if (!obj)
     {
-        fileLoggerAddEntry("PTEImagePanel: Failed to create custom class");
+        fileLoggerAddDebugEntry("PTEImagePanel: Failed to create custom class");
         return NULL;
     }
     else
     {
-        fileLoggerAddEntry("PTEImagePanel: Custom class created successfully");
+        fileLoggerAddDebugEntry("PTEImagePanel: Custom class created successfully");
         loggerFormatMessage(logMessage, "Custom class obj address: 0x%08lx", (ULONG)obj);
-        fileLoggerAddEntry(logMessage);
+        fileLoggerAddDebugEntry(logMessage);
         return obj;
     }
 }
@@ -52,13 +52,13 @@ struct MUI_CustomClass *createPTEImagePanelClass(void)
 IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg)
 {
 
-    fileLoggerAddEntry("PTEImagePanel: mNew called");
+    fileLoggerAddDebugEntry("PTEImagePanel: mNew called");
 
     obj = (Object *)DoSuperNew(cl, obj, TAG_MORE, msg->ops_AttrList);
 
     if (!obj)
     {
-        fileLoggerAddEntry("PTEImagePanel: Failed to call Super");
+        fileLoggerAddDebugEntry("PTEImagePanel: Failed to call Super");
         return 0;
     }
 
@@ -69,9 +69,7 @@ IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg)
     UBYTE *imageData = NULL;
     WORD imageHeight = 0;
     WORD imageWidth = 0;
-    BOOL enableRGB = FALSE;
-    ImgPalette *ilbmPalette = NULL;
-    BOOL useBGRA = FALSE;
+    ImgPalette *imgPalette = NULL;
     BOOL isPNG = FALSE;
 
     // Parse tag list for custom attributes
@@ -117,16 +115,8 @@ IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg)
             imageWidth = (WORD)walk->ti_Data;
             break;
 
-        case PTEA_EnableRGB:
-            enableRGB = (BOOL)walk->ti_Data;
-            break;
-
         case PTEA_ImgPalette:
-            ilbmPalette = (ImgPalette *)walk->ti_Data;
-            break;
-
-        case PTEA_UseBGRA:
-            useBGRA = (BOOL)walk->ti_Data;
+            imgPalette = (ImgPalette *)walk->ti_Data;
             break;
 
         case PTEA_IsPNG:
@@ -146,9 +136,7 @@ IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg)
     data->imageData = imageData;
     data->imageHeight = imageHeight;
     data->imageWidth = imageWidth;
-    data->enableRGB = enableRGB;
-    data->imgPalette = ilbmPalette;
-    data->useBGRA = useBGRA;
+    data->imgPalette = imgPalette;
     data->isPNG = isPNG;
 
     return (ULONG)obj;
@@ -168,7 +156,7 @@ void mDrawBorder(Object *obj, struct PTEImagePanelData *data)
     rp = _rp(obj);
     if (!rp)
     {
-        fileLoggerAddEntry("PTEImagePanel: rp failed...");
+        fileLoggerAddDebugEntry("PTEImagePanel: rp failed...");
         return;
     }
 
@@ -183,7 +171,7 @@ void mDrawBorder(Object *obj, struct PTEImagePanelData *data)
 
     // Log coordinates for debugging
     loggerFormatMessage(logMessage, "PTEImagePanel: Drawing rectangle at L=%d T=%d R=%d B=%d", left, top, right, bottom);
-    fileLoggerAddEntry(logMessage);
+    fileLoggerAddDebugEntry(logMessage);
 
     // Draw rectangle border
     Move(rp, left, top);
@@ -216,13 +204,13 @@ void mDrawRGB(Object *obj, struct PTEImagePanelData *data)
     struct Screen *scr = NULL;
 
     loggerFormatMessage(logMessage, "PTEImagePanel: we have RGB image data at: 0x%08lx", (ULONG)data->imageData);
-    fileLoggerAddEntry(logMessage);
+    fileLoggerAddDebugEntry(logMessage);
 
     // Get RastPort
     rp = _rp(obj);
     if (!rp)
     {
-        fileLoggerAddEntry("PTEImagePanel: rp failed...");
+        fileLoggerAddDebugEntry("PTEImagePanel: rp failed...");
         return;
     }
 
@@ -253,7 +241,7 @@ void mDrawRGB(Object *obj, struct PTEImagePanelData *data)
 
     if (!vp)
     {
-        fileLoggerAddEntry("PTEImagePanel: No viewport available, cannot draw RGB image");
+        fileLoggerAddDebugEntry("PTEImagePanel: No viewport available, cannot draw RGB image");
         return;
     }
 
@@ -276,7 +264,7 @@ void mDrawRGB(Object *obj, struct PTEImagePanelData *data)
     }
 
     // First pass: Find all unique colors in the image and build color map
-    fileLoggerAddEntry("First pass: Identifying unique colors in the image");
+    fileLoggerAddDebugEntry("First pass: Identifying unique colors in the image");
     for (WORD y = 0; y < data->imageHeight; y++)
     {
         for (WORD x = 0; x < data->imageWidth; x++)
@@ -316,7 +304,7 @@ void mDrawRGB(Object *obj, struct PTEImagePanelData *data)
                 // Stop if we've reached the maximum number of colors
                 if (colorCount >= MAX_COLORS)
                 {
-                    fileLoggerAddEntry("Maximum number of colors reached (16)");
+                    fileLoggerAddDebugEntry("Maximum number of colors reached (16)");
                     break;
                 }
             }
@@ -328,7 +316,7 @@ void mDrawRGB(Object *obj, struct PTEImagePanelData *data)
 
     // If we didn't find 16 colors, we'll still have valid entries up to colorCount
     sprintf(logMessage, "Found %d unique colors in the image", colorCount);
-    fileLoggerAddEntry(logMessage);
+    fileLoggerAddDebugEntry(logMessage);
 
     // Set the palette with our identified colors
     for (UBYTE i = 0; i < colorCount; i++)
@@ -349,7 +337,7 @@ void mDrawRGB(Object *obj, struct PTEImagePanelData *data)
     bottom = top + bottom - 1;
 
     // Second pass: Draw the image using our 1:1 color mapping
-    fileLoggerAddEntry("Second pass: Drawing image with exact color mapping");
+    fileLoggerAddDebugEntry("Second pass: Drawing image with exact color mapping");
     for (WORD y = 0; y < data->imageHeight; y++)
     {
         for (WORD x = 0; x < data->imageWidth; x++)
@@ -395,13 +383,13 @@ void mDrawRGB(Object *obj, struct PTEImagePanelData *data)
         }
     }
 
-    fileLoggerAddEntry("RGB image drawing completed with 1:1 color mapping");
+    fileLoggerAddDebugEntry("RGB image drawing completed with 1:1 color mapping");
 }
 
 /***********************************************************************/
 IPTR SAVEDS mDraw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
 {
-    fileLoggerAddEntry("PTEImagePanel: mDraw called");
+    fileLoggerAddDebugEntry("PTEImagePanel: mDraw called");
 
     struct RastPort *rp;
     WORD left, top, right, bottom;
@@ -425,353 +413,11 @@ IPTR SAVEDS mDraw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
             // Use specialized PNG drawing function
             mDrawPNG(obj, data);
         }
-        else if (!data->enableRGB)
-        {
-            // Call the new optimized function for testing
-        }
-        else
-        {
-            // Use the appropriate RGB drawing function based on flags
-            if (data->useBGRA)
-            {
-                // Use the new function that supports BGRA color order
-                mDrawRGB3(obj, data);
-            }
-            else
-            {
-                // Use the existing function for RGBA color order
-                mDrawRGB2(obj, data);
-            }
-        }
     }
     return 0;
 }
 
 /***********************************************************************/
-
-/***********************************************************************/
-// Function to draw RGB image data optimized for 24-bit environment
-void mDrawRGB2(Object *obj, struct PTEImagePanelData *data)
-{
-    struct RastPort *rp;
-    WORD left, top, right, bottom;
-    char logMessage[256];
-    struct ViewPort *vp = NULL;
-    struct Screen *scr = NULL;
-
-    fileLoggerAddEntry("PTEImagePanel: mDrawRGB2 - 24-bit optimized RGB drawing");
-    loggerFormatMessage(logMessage, "Drawing RGB image data at: 0x%08lx in 24-bit mode", (ULONG)data->imageData);
-    fileLoggerAddEntry(logMessage);
-
-    // Get RastPort
-    rp = _rp(obj);
-    if (!rp)
-    {
-        fileLoggerAddEntry("PTEImagePanel: rp failed, cannot draw");
-        return;
-    }
-
-    // Get the screen from the window - this is required for direct RGB drawing
-    Object *win = getWindowObject(obj);
-    if (!win)
-    {
-        fileLoggerAddEntry("PTEImagePanel: Could not get window object, cannot draw");
-        return;
-    }
-
-    // First try to get screen directly using MUI macros
-    scr = _screen(obj);
-    if (scr)
-    {
-        fileLoggerAddEntry("Successfully got screen using _screen() macro");
-        vp = &scr->ViewPort;
-    }
-    else
-    {
-        // Try getting window structure if macro didn't work
-        struct Window *window = NULL;
-        get(win, MUIA_Window_Window, &window);
-
-        if (window && window->WScreen)
-        {
-            scr = window->WScreen;
-            vp = &scr->ViewPort;
-            fileLoggerAddEntry("Successfully got screen from Window structure");
-        }
-        else
-        {
-            // Try getting screen directly
-            get(win, MUIA_Window_Screen, &scr);
-            if (scr)
-            {
-                vp = &scr->ViewPort;
-                fileLoggerAddEntry("Successfully got screen from MUIA_Window_Screen");
-            }
-            else
-            {
-                // In case we can't get the screen, we'll use a fallback approach for 24-bit drawing
-                fileLoggerAddEntry("WARNING: Could not get screen structure, using direct 24-bit drawing without screen info");
-                // We'll continue without screen/viewport information
-            }
-        }
-    }
-
-    // Log success or continue without viewport
-    if (vp)
-    {
-        fileLoggerAddEntry("Successfully retrieved ViewPort for 24-bit drawing");
-    }
-    else
-    {
-        fileLoggerAddEntry("No ViewPort available, continuing with direct 24-bit drawing");
-    }
-
-    // Calculate inset bounds
-    left = _mleft(obj) + data->borderMargin;
-    top = _mtop(obj) + data->borderMargin;
-    right = _mright(obj) - data->borderMargin;
-    bottom = _mbottom(obj) - data->borderMargin;
-
-    // Convert width/height to right/bottom
-    left += 5;
-    top += 5;
-    right = left + data->imageWidth - 1;
-    bottom = top + data->imageHeight - 1;
-
-    // Check bounds against drawable area
-    if (right > _mright(obj) - data->borderMargin)
-        right = _mright(obj) - data->borderMargin;
-    if (bottom > _mbottom(obj) - data->borderMargin)
-        bottom = _mbottom(obj) - data->borderMargin;
-
-    fileLoggerAddEntry("True 24-bit direct RGB drawing - no pen allocation required");
-    if (data->useBGRA)
-    {
-        fileLoggerAddEntry("Using BGRA color order for 24-bit drawing");
-    }
-    else
-    {
-        fileLoggerAddEntry("Using RGBA color order for 24-bit drawing");
-    }
-
-    // Direct RGB drawing without color mapping or palette lookups
-    for (WORD y = 0; y < data->imageHeight; y++)
-    {
-        for (WORD x = 0; x < data->imageWidth; x++)
-        {
-            LONG px = left + x;
-            LONG py = top + y;
-
-            // Clip to drawable area
-            if (px <= right && py <= bottom)
-            {
-                // Calculate offset into RGB chunky data (3 bytes per pixel)
-                ULONG offset = (y * data->imageWidth + x) * 3;
-
-                // Get RGB components
-                UBYTE r = data->imageData[offset];     // R
-                UBYTE g = data->imageData[offset + 1]; // G
-                UBYTE b = data->imageData[offset + 2]; // B
-
-                // Convert 8-bit RGB to 32-bit RGB required by SetRGB32
-                ULONG r32 = ((ULONG)r << 24) | ((ULONG)r << 16) | ((ULONG)r << 8) | r;
-                ULONG g32 = ((ULONG)g << 24) | ((ULONG)g << 16) | ((ULONG)g << 8) | g;
-                ULONG b32 = ((ULONG)b << 24) | ((ULONG)b << 16) | ((ULONG)b << 8) | b;
-
-                if (vp)
-                {
-                    // Set the color for a temporary pen in the viewport
-                    SetRGB32(vp, 5, r32, g32, b32);
-
-                    // Draw with the temporary pen
-                    SetAPen(rp, 5);
-                    WritePixel(rp, px, py);
-                }
-                else
-                {
-                    // Fallback method without viewport
-                    SetAPen(rp, r & 0xFF);
-                    WritePixel(rp, px, py);
-                }
-            }
-        }
-    }
-
-    fileLoggerAddEntry("24-bit direct RGB drawing completed successfully - no pen allocation used");
-}
-/**
- * New RGB drawing function that supports both RGBA and BGRA color orders
- * Adds useBGRA flag to support Amiga environments that use BGRA ordering
- * while maintaining backward compatibility with RGBA
- */
-void mDrawRGB3(Object *obj, struct PTEImagePanelData *data)
-{
-    struct RastPort *rp;
-    struct Screen *scr = NULL;
-    struct ViewPort *vp = NULL;
-    WORD left, top, right, bottom;
-    char logMessage[256];
-
-    loggerFormatMessage(logMessage, "Drawing RGB image data at: 0x%08lx in 24-bit mode with color order: %s",
-                        (ULONG)data->imageData, data->useBGRA ? "BGRA" : "RGBA");
-    fileLoggerAddEntry(logMessage);
-
-    // Check if we have image data
-    if (!data->imageData)
-    {
-        fileLoggerAddEntry("PTEImagePanel: No image data to draw");
-        return;
-    }
-
-    // Check if we have valid dimensions
-    if (data->imageWidth <= 0 || data->imageHeight <= 0)
-    {
-        fileLoggerAddEntry("PTEImagePanel: Invalid image dimensions");
-        return;
-    }
-
-    // Get the rastport
-    rp = _rp(obj);
-    if (!rp)
-    {
-        fileLoggerAddEntry("PTEImagePanel: rp failed, cannot draw");
-        return;
-    }
-
-    // Get the screen from the window - this is required for direct RGB drawing
-    Object *win = getWindowObject(obj);
-    if (!win)
-    {
-        fileLoggerAddEntry("PTEImagePanel: Could not get window object, cannot draw");
-        return;
-    }
-
-    // First try to get screen directly using MUI macros
-    scr = _screen(obj);
-    if (scr)
-    {
-        fileLoggerAddEntry("Successfully got screen using _screen() macro");
-        vp = &scr->ViewPort;
-    }
-    else
-    {
-        // Try getting window structure if macro didn't work
-        struct Window *window = NULL;
-        get(win, MUIA_Window_Window, &window);
-
-        if (window && window->WScreen)
-        {
-            scr = window->WScreen;
-            vp = &scr->ViewPort;
-            fileLoggerAddEntry("Successfully got screen from Window structure");
-        }
-        else
-        {
-            // Try getting screen directly
-            get(win, MUIA_Window_Screen, &scr);
-            if (scr)
-            {
-                vp = &scr->ViewPort;
-                fileLoggerAddEntry("Successfully got screen from MUIA_Window_Screen");
-            }
-            else
-            {
-                // In case we can't get the screen, we'll use a fallback approach for 24-bit drawing
-                fileLoggerAddEntry("WARNING: Could not get screen structure, using direct 24-bit drawing without screen info");
-                // We'll continue without screen/viewport information
-            }
-        }
-    }
-
-    // Log success or continue without viewport
-    if (vp)
-    {
-        fileLoggerAddEntry("Successfully retrieved ViewPort for 24-bit drawing");
-    }
-    else
-    {
-        fileLoggerAddEntry("No ViewPort available, continuing with direct 24-bit drawing");
-    }
-
-    // Calculate inset bounds
-    left = _mleft(obj) + data->borderMargin;
-    top = _mtop(obj) + data->borderMargin;
-    right = _mright(obj) - data->borderMargin;
-    bottom = _mbottom(obj) - data->borderMargin;
-
-    // Convert width/height to right/bottom
-    left += 5;
-    top += 5;
-    right = left + data->imageWidth - 1;
-    bottom = top + data->imageHeight - 1;
-
-    // Check bounds against drawable area
-    if (right > _mright(obj) - data->borderMargin)
-        right = _mright(obj) - data->borderMargin;
-    if (bottom > _mbottom(obj) - data->borderMargin)
-        bottom = _mbottom(obj) - data->borderMargin;
-
-    fileLoggerAddEntry("True 24-bit direct RGB drawing - no pen allocation required");
-    if (data->useBGRA)
-    {
-        fileLoggerAddEntry("Using BGRA color order for 24-bit drawing");
-    }
-    else
-    {
-        fileLoggerAddEntry("Using RGBA color order for 24-bit drawing (default)");
-    }
-
-    // Direct RGB drawing without color mapping or palette lookups
-    for (WORD y = 0; y < data->imageHeight; y++)
-    {
-        for (WORD x = 0; x < data->imageWidth; x++)
-        {
-            LONG px = left + x;
-            LONG py = top + y;
-
-            // Clip to drawable area
-            if (px <= right && py <= bottom)
-            {
-                // Calculate offset into RGB chunky data (3 bytes per pixel)
-                ULONG offset = (y * data->imageWidth + x) * 3;
-
-                UBYTE r, g, b;
-
-                if (data->useBGRA)
-                {
-                    // Get components in BGRA order (bytes are packed B,G,R consecutively)
-                    b = data->imageData[offset];
-                    g = data->imageData[offset + 1];
-                    r = data->imageData[offset + 2];
-                }
-                else
-                {
-                    // Get components in RGBA order (bytes are packed R,G,B consecutively)
-                    r = data->imageData[offset];
-                    g = data->imageData[offset + 1];
-                    b = data->imageData[offset + 2];
-                }
-
-                // In a true 24-bit environment, we can directly use these RGB values
-                // without the overhead of ObtainBestPen/ReleasePen for each pixel
-
-                // For Amiga systems, we can use WriteRGBPixel directly if available
-                // or use a system-specific optimized method for direct RGB drawing
-
-                // MUI in 24-bit mode typically has a way to set RGB values directly
-                // This is a simplified approach using the screen's color map directly
-                ULONG colorValue = (r << 16) | (g << 8) | b;
-
-                // Set the corresponding color in the pen array
-                // This works because in 24-bit mode, we have direct color mapping
-                SetAPen(rp, colorValue & 0xFFFFFF);
-                WritePixel(rp, px, py);
-            }
-        }
-    }
-
-    fileLoggerAddEntry("24-bit direct RGB drawing completed successfully - no pen allocation used");
-}
 
 /***********************************************************************/
 
@@ -786,26 +432,20 @@ void initializePTEImagePanel(void)
 DISPATCHER(PTEImagePanelDispatcher)
 {
     char logMessage[256];
-    fileLoggerAddDebugEntry("PTEImagePanel: PTEImagePanelDispatcher called");
 
     if (!msg->MethodID)
     {
-        fileLoggerAddEntry("PTEImagePanel: PTEImagePanelDispatcher called with NULL MethodID");
+        fileLoggerAddDebugEntry("PTEImagePanel: PTEImagePanelDispatcher called with NULL MethodID");
         loggerFormatMessage(logMessage, "PTEImagePanel: PTEImagePanelDispatcher called with MethodID: 0x%08lx", msg->MethodID);
-        fileLoggerAddEntry(logMessage);
+        fileLoggerAddDebugEntry(logMessage);
         loggerFormatMessage(logMessage, "msg pointer Address: 0x%08lx", (ULONG)msg);
-        fileLoggerAddEntry(logMessage);
+        fileLoggerAddDebugEntry(logMessage);
         loggerFormatMessage(logMessage, "PTEImagePanel: Obj Address: 0x%08lx", (ULONG)obj);
-        fileLoggerAddEntry(logMessage);
+        fileLoggerAddDebugEntry(logMessage);
         loggerFormatMessage(logMessage, "PTEImagePanel: Cl Address: 0x%08lx", (ULONG)cl);
-        fileLoggerAddEntry(logMessage);
+        fileLoggerAddDebugEntry(logMessage);
         return 0;
     }
-
-    // loggerFormatMessage(logMessage, "PTEImagePanel: PTEImagePanelDispatcher called with MethodID: 0x%08lx", msg->MethodID);
-    // fileLoggerAddEntry(logMessage);
-    // loggerFormatMessage(logMessage, "msg pointer: 0x%08lx", (ULONG)msg);
-    // fileLoggerAddEntry(logMessage);
 
     switch (msg->MethodID)
     {
@@ -838,9 +478,9 @@ Object *getWindowObject(Object *obj)
     Object *win = NULL;
     char logMessage[256];
 
-    fileLoggerAddEntry("Searching for MUI window object...");
+    fileLoggerAddDebugEntry("Searching for MUI window object...");
     loggerFormatMessage(logMessage, "Starting from object at address: 0x%08lx", (ULONG)obj);
-    fileLoggerAddEntry(logMessage);
+    fileLoggerAddDebugEntry(logMessage);
 
     // Attempt to find window by walking up the object hierarchy
     Object *parent = obj;
@@ -850,7 +490,7 @@ Object *getWindowObject(Object *obj)
     {
         depth++;
         loggerFormatMessage(logMessage, "Checking parent level %d at address: 0x%08lx", depth, (ULONG)parent);
-        fileLoggerAddEntry(logMessage);
+        fileLoggerAddDebugEntry(logMessage);
 
         // Check if this is a window
         LONG isWindow = 0;
@@ -858,12 +498,12 @@ Object *getWindowObject(Object *obj)
 
         loggerFormatMessage(logMessage, "get(MUIA_WindowObject) result: %s, value: %ld",
                             gotWindowAttr ? "TRUE" : "FALSE", isWindow);
-        fileLoggerAddEntry(logMessage);
+        fileLoggerAddDebugEntry(logMessage);
 
         if (isWindow)
         {
             win = parent;
-            fileLoggerAddEntry("Found MUI window object!");
+            fileLoggerAddDebugEntry("Found MUI window object!");
             break;
         }
 
@@ -875,7 +515,7 @@ Object *getWindowObject(Object *obj)
         {
             win = parent;
             loggerFormatMessage(logMessage, "Found window through MUIA_Window_Window at level %d", depth);
-            fileLoggerAddEntry(logMessage);
+            fileLoggerAddDebugEntry(logMessage);
             break;
         }
 
@@ -887,7 +527,7 @@ Object *getWindowObject(Object *obj)
         {
             win = parent;
             loggerFormatMessage(logMessage, "Found window through MUIA_Window_Screen at level %d", depth);
-            fileLoggerAddEntry(logMessage);
+            fileLoggerAddDebugEntry(logMessage);
             break;
         }
 
@@ -897,20 +537,20 @@ Object *getWindowObject(Object *obj)
 
         if (parent == oldParent)
         {
-            fileLoggerAddEntry("ERROR: Parent points to itself, breaking loop");
+            fileLoggerAddDebugEntry("ERROR: Parent points to itself, breaking loop");
             break;
         }
 
         if (depth > 10)
         {
-            fileLoggerAddEntry("WARNING: Deep hierarchy, stopping search");
+            fileLoggerAddDebugEntry("WARNING: Deep hierarchy, stopping search");
             break;
         }
     }
 
     if (win)
     {
-        fileLoggerAddEntry("Successfully found window object, checking for attributes...");
+        fileLoggerAddDebugEntry("Successfully found window object, checking for attributes...");
 
         // Verify we can access window and screen
         struct Window *window = NULL;
@@ -922,18 +562,18 @@ Object *getWindowObject(Object *obj)
         loggerFormatMessage(logMessage, "Window attributes: MUIA_Window_Window=%s (0x%08lx), MUIA_Window_Screen=%s (0x%08lx)",
                             gotWin ? "TRUE" : "FALSE", (ULONG)window,
                             gotScr ? "TRUE" : "FALSE", (ULONG)screen);
-        fileLoggerAddEntry(logMessage);
+        fileLoggerAddDebugEntry(logMessage);
 
         if (window && window->WScreen)
         {
             loggerFormatMessage(logMessage, "ViewPort available through window->WScreen: 0x%08lx",
                                 (ULONG)&window->WScreen->ViewPort);
-            fileLoggerAddEntry(logMessage);
+            fileLoggerAddDebugEntry(logMessage);
         }
     }
     else
     {
-        fileLoggerAddEntry("Failed to find window object");
+        fileLoggerAddDebugEntry("Failed to find window object");
     }
 
     return win;
@@ -948,10 +588,10 @@ void mDrawPNG(Object *obj, struct PTEImagePanelData *data)
     struct ViewPort *vp = NULL;
     struct Screen *scr = NULL;
 
-    fileLoggerAddEntry("PTEImagePanel: Drawing PNG image data in 24-bit mode");
+    fileLoggerAddDebugEntry("PTEImagePanel: Drawing PNG image data in 24-bit mode");
     loggerFormatMessage(logMessage, "PNG image data at: 0x%08lx, dimensions: %dx%d",
                         (ULONG)data->imageData, data->imageWidth, data->imageHeight);
-    fileLoggerAddEntry(logMessage);
+    fileLoggerAddDebugEntry(logMessage);
 
     // Log transparency information
     if (data->imgPalette)
@@ -960,18 +600,18 @@ void mDrawPNG(Object *obj, struct PTEImagePanelData *data)
                             (ULONG)data->imgPalette,
                             data->imgPalette->hasTransparency ? "YES" : "NO",
                             data->imgPalette->transparentColor);
-        fileLoggerAddEntry(logMessage);
+        fileLoggerAddDebugEntry(logMessage);
     }
     else
     {
-        fileLoggerAddEntry("No palette information available for PNG");
+        fileLoggerAddDebugEntry("No palette information available for PNG");
     }
 
     // Get RastPort
     rp = _rp(obj);
     if (!rp)
     {
-        fileLoggerAddEntry("PTEImagePanel: RastPort unavailable, cannot draw PNG");
+        fileLoggerAddDebugEntry("PTEImagePanel: RastPort unavailable, cannot draw PNG");
         return;
     }
 
@@ -997,7 +637,7 @@ void mDrawPNG(Object *obj, struct PTEImagePanelData *data)
     Object *win = getWindowObject(obj);
     if (!win)
     {
-        fileLoggerAddEntry("PTEImagePanel: Could not get window object, cannot draw");
+        fileLoggerAddDebugEntry("PTEImagePanel: Could not get window object, cannot draw");
         return;
     }
 
@@ -1005,7 +645,7 @@ void mDrawPNG(Object *obj, struct PTEImagePanelData *data)
     scr = _screen(obj);
     if (scr)
     {
-        fileLoggerAddEntry("Successfully got screen using _screen() macro");
+        fileLoggerAddDebugEntry("Successfully got screen using _screen() macro");
         vp = &scr->ViewPort;
     }
     else
@@ -1018,7 +658,7 @@ void mDrawPNG(Object *obj, struct PTEImagePanelData *data)
         {
             scr = window->WScreen;
             vp = &scr->ViewPort;
-            fileLoggerAddEntry("Successfully got screen from Window structure");
+            fileLoggerAddDebugEntry("Successfully got screen from Window structure");
         }
         else
         {
@@ -1027,23 +667,23 @@ void mDrawPNG(Object *obj, struct PTEImagePanelData *data)
             if (scr)
             {
                 vp = &scr->ViewPort;
-                fileLoggerAddEntry("Successfully got screen from MUIA_Window_Screen");
+                fileLoggerAddDebugEntry("Successfully got screen from MUIA_Window_Screen");
             }
             else
             {
                 // In case we can't get the screen, we'll use a fallback approach for 24-bit drawing
-                fileLoggerAddEntry("WARNING: Could not get screen structure, using direct 24-bit drawing without screen info");
+                fileLoggerAddDebugEntry("WARNING: Could not get screen structure, using direct 24-bit drawing without screen info");
                 // We'll continue without screen/viewport information
             }
         }
     }
 
-    fileLoggerAddEntry("24-bit PNG drawing using SetRGB32 with basic BGRA colors");
+    fileLoggerAddDebugEntry("24-bit PNG drawing using SetRGB32 with basic BGRA colors");
 
     // For best performance, we'll use the ViewPort with SetRGB32
     if (vp)
     {
-        fileLoggerAddEntry("Using 24-bit direct RGB rendering with ViewPort");
+        fileLoggerAddDebugEntry("Using 24-bit direct RGB rendering with ViewPort");
 
         // Direct RGB drawing using the actual image data
         for (WORD y = 0; y < data->imageHeight; y++)
@@ -1058,19 +698,41 @@ void mDrawPNG(Object *obj, struct PTEImagePanelData *data)
                 {
                     // Calculate offset into RGB chunky data (3 bytes per pixel)
                     ULONG offset = (y * data->imageWidth + x) * 3;
+                    ULONG pixelIndex = y * data->imageWidth + x;
 
                     // Get RGB components (stored as RGB)
                     UBYTE r = data->imageData[offset];     // R
                     UBYTE g = data->imageData[offset + 1]; // G
                     UBYTE b = data->imageData[offset + 2]; // B
 
-                    // Skip drawing if this is a transparent pixel (all zeros in RGB components)
-                    // This is our marker for transparent pixels from the PNG processing
-                    if (data->imgPalette && data->imgPalette->hasTransparency &&
-                        r == 0 && g == 0 && b == 0)
+                    // Check if we have a transparency mask and if this pixel is transparent
+                    BOOL isTransparent = FALSE;
+
+                    if (data->imgPalette && data->imgPalette->hasTransparency)
                     {
-                        // Skip drawing this pixel, leaving the background visible
-                        continue;
+                        // For transparent PNGs, we need to check if this is a transparent pixel
+                        // In our current implementation, transparent pixels are marked as black (0,0,0)
+                        // But we need to be careful not to skip legitimate black pixels
+                        // A better approach would be to use a separate transparency mask
+
+                        // This is a simplified approach - only pixels that are both black AND
+                        // in images with transparency flags are considered transparent
+                        if (r == 0 && g == 0 && b == 0)
+                        {
+                            // Log this potential transparent pixel for debugging
+                            // Disabled in production to avoid log spam
+                            // char transMsg[100];
+                            // sprintf(transMsg, "Found black pixel at (%d,%d) - treating as transparent", x, y);
+                            // fileLoggerAddDebugEntry(transMsg);
+
+                            isTransparent = TRUE;
+                        }
+                    }
+
+                    // If the pixel is transparent, skip drawing it
+                    if (isTransparent)
+                    {
+                        continue; // Skip to the next pixel
                     }
 
                     // Convert 8-bit RGB to 32-bit RGB required by SetRGB32
@@ -1088,11 +750,11 @@ void mDrawPNG(Object *obj, struct PTEImagePanelData *data)
             }
         }
 
-        fileLoggerAddEntry("Completed drawing with SetRGB32 for direct RGB rendering");
+        fileLoggerAddDebugEntry("Completed drawing with SetRGB32 for direct RGB rendering");
     }
     else
     {
-        fileLoggerAddEntry("No ViewPort available - fallback to direct drawing");
+        fileLoggerAddDebugEntry("No ViewPort available - fallback to direct drawing");
         // Fallback handled below
     }
 
@@ -1100,12 +762,12 @@ void mDrawPNG(Object *obj, struct PTEImagePanelData *data)
     if (vp)
     {
         // Log success about ViewPort usage
-        fileLoggerAddEntry("Using ViewPort for 24-bit direct RGB drawing");
+        fileLoggerAddDebugEntry("Using ViewPort for 24-bit direct RGB drawing");
     }
     else
     {
         // If we're in this section, we need a fallback drawing method
-        fileLoggerAddEntry("No ViewPort available, using fallback drawing method");
+        fileLoggerAddDebugEntry("No ViewPort available, using fallback drawing method");
 
         // Direct RGB drawing as a fallback method
         for (WORD y = 0; y < data->imageHeight; y++)
@@ -1120,19 +782,30 @@ void mDrawPNG(Object *obj, struct PTEImagePanelData *data)
                 {
                     // Calculate offset into RGB chunky data (3 bytes per pixel)
                     ULONG offset = (y * data->imageWidth + x) * 3;
+                    ULONG pixelIndex = y * data->imageWidth + x;
 
                     // Get RGB components from our 24-bit RGB data
                     UBYTE r = data->imageData[offset];     // R
                     UBYTE g = data->imageData[offset + 1]; // G
                     UBYTE b = data->imageData[offset + 2]; // B
 
-                    // Skip drawing if this is a transparent pixel (all zeros in RGB components)
-                    // This is our marker for transparent pixels from the PNG processing
-                    if (data->imgPalette && data->imgPalette->hasTransparency &&
-                        r == 0 && g == 0 && b == 0)
+                    // Check if we have a transparency mask and if this pixel is transparent
+                    BOOL isTransparent = FALSE;
+
+                    if (data->imgPalette && data->imgPalette->hasTransparency)
                     {
-                        // Skip drawing this pixel, leaving the background visible
-                        continue;
+                        // For transparent PNGs, we need to check if this is a transparent pixel
+                        // In our current implementation, transparent pixels are marked as black (0,0,0)
+                        if (r == 0 && g == 0 && b == 0)
+                        {
+                            isTransparent = TRUE;
+                        }
+                    }
+
+                    // If the pixel is transparent, skip drawing it
+                    if (isTransparent)
+                    {
+                        continue; // Skip to the next pixel
                     }
 
                     // Create a pen value suitable for SetAPen (depends on the platform)
@@ -1148,5 +821,5 @@ void mDrawPNG(Object *obj, struct PTEImagePanelData *data)
         }
     }
 
-    fileLoggerAddEntry("PNG drawing completed successfully");
+    fileLoggerAddDebugEntry("PNG drawing completed successfully");
 }

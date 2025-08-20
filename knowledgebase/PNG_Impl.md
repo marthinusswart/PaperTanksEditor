@@ -134,3 +134,90 @@ For AmigaOS 3.1 implementation, special attention must be paid to:
 1. Memory constraints
 2. Performance optimization for 68k processors
 3. Compatibility with UAE/Picasso96 color formats (BGRA)
+
+## Transparency Implementation
+
+### Overview
+
+Transparency in PNG files can be implemented in several ways:
+
+1. Alpha channel in RGBA images (color type 6)
+2. Alpha channel in grayscale+alpha images (color type 4)
+3. tRNS chunk for palette-based images (color type 3)
+4. tRNS chunk with a specific transparent color for RGB images (color type 2)
+
+Our implementation supports transparency with the following approach:
+
+### Key Components
+
+1. **Transparency Detection**:
+
+   - Added support for the tRNS chunk (chunk type 0x74524E53)
+   - Added transparency fields to the ImgPalette structure:
+     - `hasTransparency` flag to indicate if the image has transparent pixels
+     - `transparentColor` to store the index of the transparent color in the palette
+
+2. **RGBA Handling**:
+   - Processes alpha channel in RGBA images (color type 6)
+   - Pixels with alpha < 128 are treated as fully transparent
+   - Only sets the hasTransparency flag if transparent pixels are actually found
+3. **Rendering Approach**:
+   - Transparent pixels are encoded as black (0,0,0) during PNG processing
+   - When an image has transparency, black pixels (0,0,0) are skipped during rendering
+   - To prevent legitimate black pixels from being treated as transparent, they are adjusted to near-black (1,1,1)
+
+### Implementation Details
+
+1. **PNG Processing Phase**:
+
+   ```c
+   // For RGBA images with transparency
+   if (a < 128) /* If pixel is mostly transparent */
+   {
+       // Mark as transparent by setting to black (0,0,0)
+       (*outImageData)[i * 3] = 0;     /* R */
+       (*outImageData)[i * 3 + 1] = 0; /* G */
+       (*outImageData)[i * 3 + 2] = 0; /* B */
+   }
+   else if (r == 0 && g == 0 && b == 0 && imgPalette && imgPalette->hasTransparency)
+   {
+       // If this is a legitimate black pixel in an image with transparency,
+       // adjust it slightly to distinguish from transparent black
+       (*outImageData)[i * 3] = 1;     /* R */
+       (*outImageData)[i * 3 + 1] = 1; /* G */
+       (*outImageData)[i * 3 + 2] = 1; /* B */
+   }
+   ```
+
+2. **Rendering Phase**:
+   ```c
+   // Check if we have transparency information and if this pixel is marked as transparent
+   if (data->imgPalette && data->imgPalette->hasTransparency && r == 0 && g == 0 && b == 0)
+   {
+       // Skip drawing this pixel, leaving the background visible
+       continue;
+   }
+   ```
+
+### Limitations and Future Improvements
+
+1. **Black Pixel Handling**:
+   - The current approach has a limitation in that it modifies legitimate black pixels in images with transparency
+   - A more robust approach would be to use a separate transparency mask
+2. **Partial Transparency**:
+   - Current implementation treats transparency as binary (either fully transparent or fully opaque)
+   - Alpha blending is not supported, which would require more complex rendering capabilities
+3. **tRNS Chunk Support**:
+   - While the tRNS chunk is defined in the code, the processing could be enhanced to support different color types
+4. **Performance Considerations**:
+   - The current implementation prioritizes correctness over performance
+   - Specialized routines for different transparency types could improve performance
+
+### Testing and Validation
+
+When testing PNG transparency:
+
+1. Verify that transparent areas in the PNG show the background through them
+2. Confirm that legitimate black pixels in the image are still visible
+3. Test with different types of PNGs: RGBA, indexed with tRNS, etc.
+4. Verify the edges of transparent regions to ensure proper rendering

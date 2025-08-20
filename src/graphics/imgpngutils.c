@@ -350,13 +350,6 @@ BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalet
     return success;
 }
 
-/* Load a PNG directly to 24-bit RGB bitmap - simplified version */
-BOOL loadPNGToBitmapObjectRGB(CONST_STRPTR filename, UBYTE **outImageData)
-{
-    /* Just use the full function, ignoring palette output */
-    return loadPNGToBitmapObject(filename, outImageData, NULL);
-}
-
 /* Check if a file has a valid PNG signature */
 static BOOL validatePNGSignature(FILE *file)
 {
@@ -881,8 +874,30 @@ static BOOL processPNGImageDataChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE 
                             /* If we have a palette, we'll need to mark the transparent color */
                             if (imgPalette)
                             {
+                                imgPalette->hasTransparency = FALSE; // Start with no transparency
+                            }
+
+                            // First pass: check if we have any transparent pixels
+                            BOOL hasTransPixels = FALSE;
+                            for (ULONG i = 0; i < width * height && !hasTransPixels; i++)
+                            {
+                                UBYTE a = unfilteredData[i * 4 + 3];
+                                if (a < 128) // If pixel is mostly transparent
+                                {
+                                    hasTransPixels = TRUE;
+                                }
+                            }
+
+                            // Only set hasTransparency if we actually found transparent pixels
+                            if (hasTransPixels && imgPalette)
+                            {
                                 imgPalette->hasTransparency = TRUE;
-                                imgPalette->transparentColor = 0; /* Using index 0 (black) for fully transparent pixels */
+                                imgPalette->transparentColor = 0; // Using black as the marker
+                                fileLoggerAddDebugEntry("Found transparent pixels in RGBA image");
+                            }
+                            else
+                            {
+                                fileLoggerAddDebugEntry("No transparent pixels found in RGBA image");
                             }
 
                             for (ULONG i = 0; i < width * height; i++)
@@ -894,17 +909,32 @@ static BOOL processPNGImageDataChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE 
 
                                 if (a < 128) /* If pixel is mostly transparent */
                                 {
-                                    /* Make transparent pixels black (will be treated as transparent) */
+                                    // For transparent pixels, we'll set them to black (0,0,0)
+                                    // This is our marker for transparency
                                     (*outImageData)[i * 3] = 0;     /* R */
                                     (*outImageData)[i * 3 + 1] = 0; /* G */
                                     (*outImageData)[i * 3 + 2] = 0; /* B */
                                 }
                                 else
                                 {
-                                    /* Copy RGB components for non-transparent pixels */
-                                    (*outImageData)[i * 3] = r;     /* R */
-                                    (*outImageData)[i * 3 + 1] = g; /* G */
-                                    (*outImageData)[i * 3 + 2] = b; /* B */
+                                    // For non-transparent pixels, copy the RGB values
+                                    // If the pixel is black (0,0,0) but not transparent, we'll adjust
+                                    // it slightly so it's not confused with transparent black
+                                    if (r == 0 && g == 0 && b == 0 && imgPalette && imgPalette->hasTransparency)
+                                    {
+                                        // If this is a legitimate black pixel and we have transparency
+                                        // Adjust to near-black to distinguish from transparent black
+                                        (*outImageData)[i * 3] = 1;     /* R - slight adjustment */
+                                        (*outImageData)[i * 3 + 1] = 1; /* G - slight adjustment */
+                                        (*outImageData)[i * 3 + 2] = 1; /* B - slight adjustment */
+                                    }
+                                    else
+                                    {
+                                        // For all other non-transparent colors, use the original values
+                                        (*outImageData)[i * 3] = r;     /* R */
+                                        (*outImageData)[i * 3 + 1] = g; /* G */
+                                        (*outImageData)[i * 3 + 2] = b; /* B */
+                                    }
                                 }
                             }
                             success = TRUE;
