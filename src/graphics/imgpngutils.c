@@ -25,7 +25,7 @@ static BOOL readPNGChunk(FILE *file, ULONG *chunkType, ULONG *chunkLength, UBYTE
 static BOOL decodePNGHeader(UBYTE *data, PNGHeader *header);
 static BOOL processPNGPaletteChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE **palette, ULONG *paletteSize, BOOL *hasPalette);
 static BOOL processPNGImageDataChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE **outImageData, ULONG width, ULONG height,
-                                     ImgPalette *imgPalette, FILE *file, BOOL *foundIDAT);
+                                     ImgPalette *imgPalette, FILE *file, BOOL *foundIDAT, BOOL useTestPattern);
 static void generateTestPattern(UBYTE **outImageData, ULONG width, ULONG height);
 
 /* Main PNG loading function - simplified version for 24-bit RGB PNGs */
@@ -202,7 +202,7 @@ BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalet
 
         case PNG_CHUNK_IDAT:
             /* Process the image data chunk */
-            processPNGImageDataChunk(chunkData, chunkLength, outImageData, width, height, imgPalette, file, &foundIDAT);
+            processPNGImageDataChunk(chunkData, chunkLength, outImageData, width, height, imgPalette, file, &foundIDAT, TRUE);
             break;
 
         case PNG_CHUNK_IEND:
@@ -378,72 +378,148 @@ static BOOL readPNGChunk(FILE *file, ULONG *chunkType, ULONG *chunkLength, UBYTE
     return TRUE;
 }
 
-/* Generate a 6-color test pattern in 24-bit RGB format */
+/* Generate a 16-color test pattern in 24-bit RGB format */
 static void generateTestPattern(UBYTE **outImageData, ULONG width, ULONG height)
 {
-    /* Create a 6-color test pattern with red, green, blue, white, black, and yellow,
-       storing it as direct 24-bit RGB. In a real implementation, we would decompress
-       and process the actual PNG data here */
+    /* Create a 16-color test pattern, storing it as direct 24-bit RGB.
+       In a real implementation, we would decompress and process the actual PNG data here */
     for (ULONG y = 0; y < height; y++)
     {
         for (ULONG x = 0; x < width; x++)
         {
             ULONG offset = (y * width + x) * 3;
+            ULONG colSection = x / (width / 4);  /* 4 columns */
+            ULONG rowSection = y / (height / 4); /* 4 rows */
 
-            /* Using RGB format consistently (not BGRA) */
-            if (x < width / 3)
+            /* 16 different colors based on column and row */
+            switch (rowSection * 4 + colSection)
             {
-                if (y < height / 2)
-                {
-                    // Top-left: RED (255, 0, 0)
-                    (*outImageData)[offset] = 255;   /* R */
-                    (*outImageData)[offset + 1] = 0; /* G */
-                    (*outImageData)[offset + 2] = 0; /* B */
-                }
-                else
-                {
-                    // Bottom-left: GREEN (0, 255, 0)
-                    (*outImageData)[offset] = 0;       /* R */
-                    (*outImageData)[offset + 1] = 255; /* G */
-                    (*outImageData)[offset + 2] = 0;   /* B */
-                }
-            }
-            else if (x < 2 * width / 3)
-            {
-                if (y < height / 2)
-                {
-                    // Top-middle: BLUE (0, 0, 255)
-                    (*outImageData)[offset] = 0;       /* R */
-                    (*outImageData)[offset + 1] = 0;   /* G */
-                    (*outImageData)[offset + 2] = 255; /* B */
-                }
-                else
-                {
-                    // Bottom-middle: WHITE (255, 255, 255)
-                    (*outImageData)[offset] = 255;     /* R */
-                    (*outImageData)[offset + 1] = 255; /* G */
-                    (*outImageData)[offset + 2] = 255; /* B */
-                }
-            }
-            else
-            {
-                if (y < height / 2)
-                {
-                    // Top-right: BLACK (0, 0, 0)
-                    (*outImageData)[offset] = 0;     /* R */
-                    (*outImageData)[offset + 1] = 0; /* G */
-                    (*outImageData)[offset + 2] = 0; /* B */
-                }
-                else
-                {
-                    // Bottom-right: YELLOW (255, 255, 0)
-                    (*outImageData)[offset] = 255;     /* R */
-                    (*outImageData)[offset + 1] = 255; /* G */
-                    (*outImageData)[offset + 2] = 0;   /* B */
-                }
+            case 0:                              /* Row 0, Col 0: RED (255, 0, 0) */
+                (*outImageData)[offset] = 255;   /* R */
+                (*outImageData)[offset + 1] = 0; /* G */
+                (*outImageData)[offset + 2] = 0; /* B */
+                break;
+
+            case 1:                                /* Row 0, Col 1: GREEN (0, 255, 0) */
+                (*outImageData)[offset] = 0;       /* R */
+                (*outImageData)[offset + 1] = 255; /* G */
+                (*outImageData)[offset + 2] = 0;   /* B */
+                break;
+
+            case 2:                                /* Row 0, Col 2: BLUE (0, 0, 255) */
+                (*outImageData)[offset] = 0;       /* R */
+                (*outImageData)[offset + 1] = 0;   /* G */
+                (*outImageData)[offset + 2] = 255; /* B */
+                break;
+
+            case 3:                                /* Row 0, Col 3: YELLOW (255, 255, 0) */
+                (*outImageData)[offset] = 255;     /* R */
+                (*outImageData)[offset + 1] = 255; /* G */
+                (*outImageData)[offset + 2] = 0;   /* B */
+                break;
+
+            case 4:                                /* Row 1, Col 0: ORANGE (255, 165, 0) */
+                (*outImageData)[offset] = 255;     /* R */
+                (*outImageData)[offset + 1] = 165; /* G */
+                (*outImageData)[offset + 2] = 0;   /* B */
+                break;
+
+            case 5:                                /* Row 1, Col 1: PURPLE (128, 0, 128) */
+                (*outImageData)[offset] = 128;     /* R */
+                (*outImageData)[offset + 1] = 0;   /* G */
+                (*outImageData)[offset + 2] = 128; /* B */
+                break;
+
+            case 6:                                /* Row 1, Col 2: CYAN (0, 255, 255) */
+                (*outImageData)[offset] = 0;       /* R */
+                (*outImageData)[offset + 1] = 255; /* G */
+                (*outImageData)[offset + 2] = 255; /* B */
+                break;
+
+            case 7:                                /* Row 1, Col 3: MAGENTA (255, 0, 255) */
+                (*outImageData)[offset] = 255;     /* R */
+                (*outImageData)[offset + 1] = 0;   /* G */
+                (*outImageData)[offset + 2] = 255; /* B */
+                break;
+
+            case 8:                               /* Row 2, Col 0: BROWN (165, 42, 42) */
+                (*outImageData)[offset] = 165;    /* R */
+                (*outImageData)[offset + 1] = 42; /* G */
+                (*outImageData)[offset + 2] = 42; /* B */
+                break;
+
+            case 9:                                /* Row 2, Col 1: PINK (255, 192, 203) */
+                (*outImageData)[offset] = 255;     /* R */
+                (*outImageData)[offset + 1] = 192; /* G */
+                (*outImageData)[offset + 2] = 203; /* B */
+                break;
+
+            case 10:                               /* Row 2, Col 2: GRAY (128, 128, 128) */
+                (*outImageData)[offset] = 128;     /* R */
+                (*outImageData)[offset + 1] = 128; /* G */
+                (*outImageData)[offset + 2] = 128; /* B */
+                break;
+
+            case 11:                               /* Row 2, Col 3: LIME (0, 255, 0) */
+                (*outImageData)[offset] = 50;      /* R */
+                (*outImageData)[offset + 1] = 205; /* G */
+                (*outImageData)[offset + 2] = 50;  /* B */
+                break;
+
+            case 12:                               /* Row 3, Col 0: TEAL (0, 128, 128) */
+                (*outImageData)[offset] = 0;       /* R */
+                (*outImageData)[offset + 1] = 128; /* G */
+                (*outImageData)[offset + 2] = 128; /* B */
+                break;
+
+            case 13:                               /* Row 3, Col 1: GOLD (255, 215, 0) */
+                (*outImageData)[offset] = 255;     /* R */
+                (*outImageData)[offset + 1] = 215; /* G */
+                (*outImageData)[offset + 2] = 0;   /* B */
+                break;
+
+            case 14:                               /* Row 3, Col 2: WHITE (255, 255, 255) */
+                (*outImageData)[offset] = 255;     /* R */
+                (*outImageData)[offset + 1] = 255; /* G */
+                (*outImageData)[offset + 2] = 255; /* B */
+                break;
+
+            case 15:                             /* Row 3, Col 3: BLACK (0, 0, 0) */
+                (*outImageData)[offset] = 0;     /* R */
+                (*outImageData)[offset + 1] = 0; /* G */
+                (*outImageData)[offset + 2] = 0; /* B */
+                break;
             }
         }
     }
+}
+
+/* Log the test pattern color grid layout */
+static void logTestPatternColorGrid(void)
+{
+    /* Log a grid showing the color arrangement in the test pattern */
+    fileLoggerAddEntry("Test Pattern Color Grid Layout (4x4):");
+    fileLoggerAddEntry("+---------+---------+---------+---------+");
+    fileLoggerAddEntry("| Red     | Green   | Blue    | Yellow  |");
+    fileLoggerAddEntry("+---------+---------+---------+---------+");
+    fileLoggerAddEntry("| Orange  | Purple  | Cyan    | Magenta |");
+    fileLoggerAddEntry("+---------+---------+---------+---------+");
+    fileLoggerAddEntry("| Brown   | Pink    | Gray    | Lime    |");
+    fileLoggerAddEntry("+---------+---------+---------+---------+");
+    fileLoggerAddEntry("| Teal    | Gold    | White   | Black   |");
+    fileLoggerAddEntry("+---------+---------+---------+---------+");
+    
+    /* Also log a compact version with abbreviated color names */
+    fileLoggerAddEntry("Compact color grid with abbreviated names:");
+    fileLoggerAddEntry("+------+------+------+------+");
+    fileLoggerAddEntry("| Red  | Grn  | Blu  | Yel  |");
+    fileLoggerAddEntry("+------+------+------+------+");
+    fileLoggerAddEntry("| Org  | Pur  | Cyn  | Mag  |");
+    fileLoggerAddEntry("+------+------+------+------+");
+    fileLoggerAddEntry("| Brn  | Pnk  | Gry  | Lim  |");
+    fileLoggerAddEntry("+------+------+------+------+");
+    fileLoggerAddEntry("| Teal | Gold | Wht  | Blk  |");
+    fileLoggerAddEntry("+------+------+------+------+");
 }
 
 /* Process a PNG IDAT (image data) chunk */
@@ -475,6 +551,11 @@ static BOOL processPNGImageDataChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE 
 
     /* Generate a test pattern instead of decompressing actual PNG data */
     generateTestPattern(outImageData, width, height);
+    
+    /* Log the color grid layout */
+    logTestPatternColorGrid();
+    
+    fileLoggerAddEntry("Generated test pattern as fallback for PNG data");
 
     return TRUE;
 }
