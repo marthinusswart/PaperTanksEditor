@@ -23,6 +23,8 @@ DEFLATE data consists of blocks, which can be of three types:
 - Type 1: Compressed with fixed Huffman codes
 - Type 2: Compressed with dynamic Huffman codes
 
+Our implementation now supports all three block types, including fixed Huffman codes.
+
 ### 3. Huffman Coding
 
 Huffman coding is used for efficient compression by using variable-length codes where more frequent symbols have shorter codes. Our implementation includes:
@@ -48,6 +50,18 @@ The decompression algorithm works as follows:
 
 ## Implementation Details
 
+### Fixed Huffman Codes (Type 1)
+
+The fixed Huffman codes in DEFLATE are predefined with the following structure:
+
+- Literals 0-143: 8 bits (codes 00110000 through 10111111)
+- Literals 144-255: 9 bits (codes 110010000 through 111111111)
+- Literals 256-279: 7 bits (codes 0000000 through 0010111)
+- Literals 280-287: 8 bits (codes 11000000 through 11000111)
+- All 30 distance codes: 5 bits (codes 00000 through 11101)
+
+Our implementation builds these predefined Huffman tables and uses them with the standard LZ77 decompression algorithm.
+
 ### Huffman Tree Construction
 
 The canonical Huffman tree is built in these steps:
@@ -62,6 +76,21 @@ Length and distance values are computed using base tables and extra bits:
 
 - Length is calculated from a base value (3-258) plus optional extra bits
 - Distance is calculated from a base value (1-32768) plus optional extra bits
+
+### Adler-32 Checksum Verification
+
+ZLIB format includes an Adler-32 checksum at the end of the compressed data stream. This checksum is used to verify the integrity of the decompressed data:
+
+1. The checksum is calculated over the entire uncompressed data
+2. The algorithm uses two 16-bit accumulators (a and b) initialized as:
+   - a = 1
+   - b = 0
+3. For each byte in the data:
+   - a = (a + byte) % 65521
+   - b = (b + a) % 65521
+4. The final checksum is (b << 16) | a
+
+Our implementation extracts the stored checksum from the end of the compressed data stream and compares it with the calculated checksum of the decompressed data.
 
 ## References
 

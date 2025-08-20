@@ -29,11 +29,17 @@ BOOL processZlibHeader(UBYTE *compressedData, ULONG compressedSize, UBYTE *compr
 BOOL inflateData(UBYTE *compressedData, ULONG compressedSize, ULONG startPos, UBYTE *outputBuffer,
                  ULONG outputBufferSize, ULONG *bytesWritten);
 
+/* Function to calculate Adler-32 checksum */
+ULONG calculateAdler32(UBYTE *data, ULONG length);
+
+/* Function to verify Adler-32 checksum in ZLIB data */
+BOOL verifyAdler32Checksum(UBYTE *compressedData, ULONG compressedSize, UBYTE *decompressedData, ULONG decompressedSize);
+
 /* Process an uncompressed (type 0) DEFLATE block */
 BOOL processUncompressedBlock(BitBuffer *bitBuf, UBYTE *compressedData, ULONG compressedSize,
                               UBYTE *outputBuffer, ULONG outputBufferSize, ULONG *outPos);
 
-/* Process a dynamic Huffman (type 2) DEFLATE block */
+/* Skip an unsupported DEFLATE block type */
 BOOL processSkipUnsupportedBlock(BitBuffer *bitBuf, BOOL isFinalBlock, const char *blockTypeName);
 
 /* Initialize a bit buffer for reading compressed data */

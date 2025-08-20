@@ -36,6 +36,10 @@ typedef struct HuffmanTable
 BOOL processDynamicHuffmanBlock(BitBuffer *bitBuf, UBYTE *compressedData, ULONG compressedSize,
                                 UBYTE *outputBuffer, ULONG outputBufferSize, ULONG *outPos);
 
+/* Process a fixed Huffman (type 1) DEFLATE block */
+BOOL processFixedHuffmanBlock(BitBuffer *bitBuf, UBYTE *compressedData, ULONG compressedSize,
+                              UBYTE *outputBuffer, ULONG outputBufferSize, ULONG *outPos);
+
 /* Get the code length code order for dynamic Huffman decoding */
 const UBYTE *getCodeLengthCodeOrder(void);
 
@@ -44,6 +48,9 @@ BOOL buildHuffmanTreeFromCodeLengths(UBYTE *codeLengths, ULONG numCodes, Huffman
 
 /* Decode a single value using a Huffman table */
 BOOL decodeHuffmanValue(BitBuffer *bitBuf, HuffmanTable *table, UWORD *value);
+
+/* Free resources allocated for a Huffman table */
+void freeHuffmanTable(HuffmanTable *table);
 
 /* Decode LZ77 compressed data using Huffman tables */
 BOOL decodeLZ77Data(BitBuffer *bitBuf, HuffmanTable *literalTable, HuffmanTable *distanceTable,

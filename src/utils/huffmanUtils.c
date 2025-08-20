@@ -553,7 +553,10 @@ BOOL decodeLZ77Data(BitBuffer *bitBuf, HuffmanTable *literalTable, HuffmanTable 
 
             if (*outPos + length > outputBufferSize)
             {
-                fileLoggerAddDebugEntry("Output buffer overflow when copying backreference");
+                char sizeMessage[256];
+                sprintf(sizeMessage, "Output buffer overflow when copying backreference: outPos=%lu, length=%lu, buffer size=%lu",
+                        *outPos, length, outputBufferSize);
+                fileLoggerAddDebugEntry(sizeMessage);
                 return FALSE;
             }
 
@@ -575,4 +578,80 @@ BOOL decodeLZ77Data(BitBuffer *bitBuf, HuffmanTable *literalTable, HuffmanTable 
 
     /* We should never reach here because we return when we find the end-of-block marker */
     return FALSE;
+}
+
+/* Process a fixed Huffman (type 1) DEFLATE block
+ * According to RFC 1951, the fixed Huffman codes are defined as follows:
+ * Literal/length alphabet:
+ *   - Literals 0-143: 8 bits, codes 00110000 through 10111111
+ *   - Literals 144-255: 9 bits, codes 110010000 through 111111111
+ *   - Literals 256-279: 7 bits, codes 0000000 through 0010111
+ *   - Literals 280-287: 8 bits, codes 11000000 through 11000111
+ * Distance alphabet:
+ *   - All 30 codes are 5 bits, codes 00000 through 11101
+ */
+BOOL processFixedHuffmanBlock(BitBuffer *bitBuf, UBYTE *compressedData, ULONG compressedSize,
+                              UBYTE *outputBuffer, ULONG outputBufferSize, ULONG *outPos)
+{
+    char logMessage[256];
+    HuffmanTable literalTable, distanceTable;
+    UBYTE literalLengths[MAX_LITERAL_CODES];
+    UBYTE distanceLengths[MAX_DISTANCE_CODES];
+    ULONG i;
+
+    fileLoggerAddDebugEntry("Processing fixed Huffman block");
+
+    /* Initialize code lengths for fixed Huffman codes */
+    /* Literals 0-143: 8 bits */
+    for (i = 0; i <= 143; i++)
+        literalLengths[i] = 8;
+
+    /* Literals 144-255: 9 bits */
+    for (i = 144; i <= 255; i++)
+        literalLengths[i] = 9;
+
+    /* Literals 256-279: 7 bits */
+    for (i = 256; i <= 279; i++)
+        literalLengths[i] = 7;
+
+    /* Literals 280-287: 8 bits */
+    for (i = 280; i < MAX_LITERAL_CODES; i++)
+        literalLengths[i] = 8;
+
+    /* All 30 distance codes are 5 bits */
+    for (i = 0; i < MAX_DISTANCE_CODES; i++)
+        distanceLengths[i] = 5;
+
+    /* Build Huffman trees for literals/lengths and distances */
+    if (!buildHuffmanTreeFromCodeLengths(literalLengths, MAX_LITERAL_CODES, &literalTable))
+    {
+        fileLoggerAddDebugEntry("Failed to build fixed Huffman tree for literals/lengths");
+        return FALSE;
+    }
+
+    if (!buildHuffmanTreeFromCodeLengths(distanceLengths, MAX_DISTANCE_CODES, &distanceTable))
+    {
+        fileLoggerAddDebugEntry("Failed to build fixed Huffman tree for distances");
+        freeHuffmanTable(&literalTable);
+        return FALSE;
+    }
+
+    fileLoggerAddDebugEntry("Built fixed Huffman trees for literals/lengths and distances");
+
+    /* Use these trees to decode the actual compressed data */
+    if (!decodeLZ77Data(bitBuf, &literalTable, &distanceTable, outputBuffer, outputBufferSize, outPos))
+    {
+        fileLoggerAddDebugEntry("Failed to decode fixed Huffman LZ77 compressed data");
+        freeHuffmanTable(&literalTable);
+        freeHuffmanTable(&distanceTable);
+        return FALSE;
+    }
+
+    fileLoggerAddDebugEntry("Successfully decoded fixed Huffman LZ77 compressed data");
+
+    /* Clean up */
+    freeHuffmanTable(&literalTable);
+    freeHuffmanTable(&distanceTable);
+
+    return TRUE;
 }

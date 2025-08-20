@@ -288,7 +288,7 @@ BOOL inflateData(UBYTE *compressedData, ULONG compressedSize, ULONG startPos, UB
             break;
 
         case BLOCK_TYPE_FIXED: /* Fixed Huffman codes */
-            if (!processSkipUnsupportedBlock(&bitBuf, isFinalBlock, "Fixed"))
+            if (!processFixedHuffmanBlock(&bitBuf, compressedData, compressedSize, outputBuffer, outputBufferSize, &outPos))
             {
                 return FALSE;
             }
@@ -346,7 +346,7 @@ BOOL decompressZlibData(UBYTE *compressedData, ULONG compressedSize, UBYTE **dec
     /* For now, allocate a buffer for decompressed data
      * In a real implementation, we would dynamically resize this
      * as needed during decompression */
-    ULONG estimatedSize = compressedSize * 4; /* Rough estimate */
+    ULONG estimatedSize = compressedSize * 10; /* Increase buffer size for larger expansion ratios */
     *decompressedData = (UBYTE *)malloc(estimatedSize);
     if (!*decompressedData)
     {
@@ -382,7 +382,86 @@ BOOL decompressZlibData(UBYTE *compressedData, ULONG compressedSize, UBYTE **dec
             compressedSize, *decompressedSize);
     fileLoggerAddDebugEntry(logMessage);
 
-    /* In a real implementation, we would verify the Adler-32 checksum here */
+    /* Verify Adler-32 checksum */
+    if (!verifyAdler32Checksum(compressedData, compressedSize, *decompressedData, *decompressedSize))
+    {
+        fileLoggerAddDebugEntry("Adler-32 checksum verification failed");
+        free(*decompressedData);
+        *decompressedData = NULL;
+        return FALSE;
+    }
 
+    fileLoggerAddDebugEntry("Adler-32 checksum verification successful");
     return TRUE;
+}
+
+/* Calculate Adler-32 checksum
+ * Implementation based on RFC 1950 specification
+ * Adler-32 is a checksum algorithm which is a modified version of Fletcher's checksum
+ */
+#define ADLER_MOD 65521 /* Largest prime smaller than 65536 */
+
+ULONG calculateAdler32(UBYTE *data, ULONG length)
+{
+    ULONG a = 1, b = 0;
+    ULONG i;
+
+    /* Process each byte */
+    for (i = 0; i < length; i++)
+    {
+        a = (a + data[i]) % ADLER_MOD;
+        b = (b + a) % ADLER_MOD;
+    }
+
+    return (b << 16) | a;
+}
+
+/* Verify Adler-32 checksum in ZLIB data
+ * According to RFC 1950, the Adler-32 checksum is stored as 4 bytes
+ * at the end of the ZLIB stream
+ */
+BOOL verifyAdler32Checksum(UBYTE *compressedData, ULONG compressedSize, UBYTE *decompressedData, ULONG decompressedSize)
+{
+    char logMessage[256];
+    ULONG storedChecksum, calculatedChecksum;
+
+    fileLoggerAddDebugEntry("Starting Adler-32 checksum verification");
+
+    /* Make sure we have at least 4 bytes for the checksum at the end */
+    if (compressedSize < 6) /* 2 header bytes + at least 4 checksum bytes */
+    {
+        sprintf(logMessage, "Compressed data too small to contain checksum: %lu bytes", compressedSize);
+        fileLoggerAddDebugEntry(logMessage);
+        return FALSE;
+    }
+
+    /* Log the size of the compressed and decompressed data */
+    sprintf(logMessage, "Compressed size: %lu bytes, Decompressed size: %lu bytes",
+            compressedSize, decompressedSize);
+    fileLoggerAddDebugEntry(logMessage);
+
+    /* Extract stored checksum (big-endian) from the end of the compressed data */
+    storedChecksum = ((ULONG)compressedData[compressedSize - 4] << 24) |
+                     ((ULONG)compressedData[compressedSize - 3] << 16) |
+                     ((ULONG)compressedData[compressedSize - 2] << 8) |
+                     (ULONG)compressedData[compressedSize - 1];
+
+    /* Calculate checksum of decompressed data */
+    calculatedChecksum = calculateAdler32(decompressedData, decompressedSize);
+
+    sprintf(logMessage, "Adler-32 checksum: stored=0x%08lX, calculated=0x%08lX",
+            storedChecksum, calculatedChecksum);
+    fileLoggerAddDebugEntry(logMessage);
+
+    /* Compare stored and calculated checksums */
+    if (storedChecksum == calculatedChecksum)
+    {
+        fileLoggerAddDebugEntry("Adler-32 checksum verification passed");
+        return TRUE;
+    }
+    else
+    {
+        fileLoggerAddDebugEntry("Adler-32 checksum verification failed - checksums don't match");
+        return FALSE;
+    }
 }
