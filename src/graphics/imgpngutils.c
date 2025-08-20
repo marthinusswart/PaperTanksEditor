@@ -18,6 +18,7 @@
 #include <proto/dos.h>
 #include "imgpngutils.h"
 #include "imgpaletteutils.h"
+#include "../utils/zlibutils.h"
 
 /* Forward declarations for internal functions */
 static BOOL validatePNGSignature(FILE *file);
@@ -202,7 +203,7 @@ BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalet
 
         case PNG_CHUNK_IDAT:
             /* Process the image data chunk */
-            processPNGImageDataChunk(chunkData, chunkLength, outImageData, width, height, imgPalette, file, &foundIDAT, TRUE);
+            processPNGImageDataChunk(chunkData, chunkLength, outImageData, width, height, imgPalette, file, &foundIDAT, FALSE);
             break;
 
         case PNG_CHUNK_IEND:
@@ -526,6 +527,8 @@ static void logTestPatternColorGrid(void)
 static BOOL processPNGImageDataChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE **outImageData, ULONG width, ULONG height,
                                      ImgPalette *imgPalette, FILE *file, BOOL *foundIDAT, BOOL useTestPattern)
 {
+    char logMessage[256];
+
     /* Validate parameters */
     if (!chunkData || !outImageData || !foundIDAT || width <= 0 || height <= 0)
         return FALSE;
@@ -565,16 +568,36 @@ static BOOL processPNGImageDataChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE 
         /* In normal mode, try to decompress and process the actual PNG data */
         fileLoggerAddEntry("Found IDAT chunk - attempting to process actual PNG data");
 
-        /* TODO: Add real PNG decompression code here.
-           This would involve:
-           1. Inflate/decompress the zlib-compressed data
-           2. Apply PNG filters
-           3. Convert to RGB format based on color type
+        /* Step 1: Decompress the zlib-compressed data */
+        UBYTE *decompressedData = NULL;
+        ULONG decompressedSize = 0;
 
-           For now we'll still use the test pattern as we don't have the full
-           PNG decompression implementation */
-        fileLoggerAddEntry("Warning: Full PNG decompression not implemented yet");
-        generateTestPattern(outImageData, width, height);
+        if (decompressZlibData(chunkData, chunkLength, &decompressedData, &decompressedSize))
+        {
+            /* Step 2: Apply PNG filters and convert to RGB */
+            sprintf(logMessage, "Successfully decompressed %lu bytes of PNG data", decompressedSize);
+            fileLoggerAddEntry(logMessage);
+
+            /* TODO: Apply PNG filters (Sub, Up, Average, Paeth)
+               and convert to RGB format based on color type */
+
+            /* For now, since we don't have full filter processing,
+               still use the test pattern but log our progress */
+            fileLoggerAddEntry("Note: PNG filter processing not yet implemented");
+            generateTestPattern(outImageData, width, height);
+
+            /* Free decompressed data when done */
+            if (decompressedData)
+            {
+                free(decompressedData);
+            }
+        }
+        else
+        {
+            /* Decompression failed, fall back to test pattern */
+            fileLoggerAddEntry("PNG decompression failed, using test pattern instead");
+            generateTestPattern(outImageData, width, height);
+        }
     }
 
     return TRUE;
