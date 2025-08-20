@@ -18,6 +18,7 @@
 #include <proto/dos.h>
 #include "imgpngutils.h"
 #include "imgpaletteutils.h"
+#include "imgpngfilters.h"
 #include "../utils/zlibutils.h"
 
 /* Forward declarations for internal functions */
@@ -26,7 +27,7 @@ static BOOL readPNGChunk(FILE *file, ULONG *chunkType, ULONG *chunkLength, UBYTE
 static BOOL decodePNGHeader(UBYTE *data, PNGHeader *header);
 static BOOL processPNGPaletteChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE **palette, ULONG *paletteSize, BOOL *hasPalette);
 static BOOL processPNGImageDataChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE **outImageData, ULONG width, ULONG height,
-                                     ImgPalette *imgPalette, FILE *file, BOOL *foundIDAT, BOOL useTestPattern);
+                                     ImgPalette *imgPalette, FILE *file, BOOL *foundIDAT, BOOL useTestPattern, PNGHeader *pngHeader);
 static void generateTestPattern(UBYTE **outImageData, ULONG width, ULONG height);
 
 /* Main PNG loading function - simplified version for 24-bit RGB PNGs */
@@ -203,7 +204,7 @@ BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalet
 
         case PNG_CHUNK_IDAT:
             /* Process the image data chunk */
-            processPNGImageDataChunk(chunkData, chunkLength, outImageData, width, height, imgPalette, file, &foundIDAT, FALSE);
+            processPNGImageDataChunk(chunkData, chunkLength, outImageData, width, height, imgPalette, file, &foundIDAT, FALSE, &pngHeader);
             break;
 
         case PNG_CHUNK_IEND:
@@ -525,12 +526,12 @@ static void logTestPatternColorGrid(void)
 
 /* Process a PNG IDAT (image data) chunk */
 static BOOL processPNGImageDataChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE **outImageData, ULONG width, ULONG height,
-                                     ImgPalette *imgPalette, FILE *file, BOOL *foundIDAT, BOOL useTestPattern)
+                                     ImgPalette *imgPalette, FILE *file, BOOL *foundIDAT, BOOL useTestPattern, PNGHeader *pngHeader)
 {
     char logMessage[256];
 
     /* Validate parameters */
-    if (!chunkData || !outImageData || !foundIDAT || width <= 0 || height <= 0)
+    if (!chunkData || !outImageData || !foundIDAT || width <= 0 || height <= 0 || !pngHeader)
         return FALSE;
 
     /* Set the found flag so we know we encountered an IDAT chunk */
@@ -578,19 +579,112 @@ static BOOL processPNGImageDataChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE 
             sprintf(logMessage, "Successfully decompressed %lu bytes of PNG data", decompressedSize);
             fileLoggerAddDebugEntry(logMessage);
 
-            /* TODO: Apply PNG filters (Sub, Up, Average, Paeth)
-               and convert to RGB format based on color type */
+            /* Get the bytes per pixel based on color type */
+            UBYTE bytesPerPixel = 0;
+            BOOL success = FALSE;
 
-            /* For now, since we don't have full filter processing,
-               still use the test pattern but log our progress */
-            fileLoggerAddDebugEntry("Note: PNG filter processing not yet implemented");
-            generateTestPattern(outImageData, width, height);
-
-            /* Free decompressed data when done */
-            if (decompressedData)
+            /* Determine bytes per pixel for filtering based on color type */
+            switch (pngHeader->colorType)
             {
-                free(decompressedData);
+            case PNG_COLOR_TYPE_GRAYSCALE:
+                bytesPerPixel = (pngHeader->bitDepth + 7) / 8; /* Round up to nearest byte */
+                break;
+
+            case PNG_COLOR_TYPE_RGB:
+                bytesPerPixel = 3 * pngHeader->bitDepth / 8;
+                break;
+
+            case PNG_COLOR_TYPE_PALETTE:
+                bytesPerPixel = 1; /* Indexed color - always 1 byte */
+                break;
+
+            case PNG_COLOR_TYPE_GRAYSCALE_ALPHA:
+                bytesPerPixel = 2 * pngHeader->bitDepth / 8;
+                break;
+
+            case PNG_COLOR_TYPE_RGBA:
+                bytesPerPixel = 4 * pngHeader->bitDepth / 8;
+                break;
+
+            default:
+                bytesPerPixel = 0;
+                break;
             }
+
+            /* Check if we have a valid bytes per pixel value */
+            if (bytesPerPixel > 0)
+            {
+                /* Allocate a buffer for the unfiltered data */
+                UBYTE *unfilteredData = (UBYTE *)malloc(width * height * bytesPerPixel);
+                if (unfilteredData)
+                {
+                    /* Apply PNG filters */
+                    if (applyPNGFilters(decompressedData, decompressedSize, width, height, bytesPerPixel, unfilteredData))
+                    {
+                        /* Convert unfiltered data to RGB format for output */
+                        fileLoggerAddDebugEntry("Successfully applied PNG filters");
+
+                        /* Convert to RGB format based on color type */
+                        /* For now, just handle RGB and RGBA, using test pattern for others */
+                        switch (pngHeader->colorType)
+                        {
+                        case PNG_COLOR_TYPE_RGB:
+                            /* Direct copy for RGB data */
+                            memcpy(*outImageData, unfilteredData, width * height * 3);
+                            success = TRUE;
+                            fileLoggerAddDebugEntry("Converted PNG RGB data to output format");
+                            break;
+
+                        case PNG_COLOR_TYPE_RGBA:
+                            /* Copy RGB components, skip alpha */
+                            for (ULONG i = 0; i < width * height; i++)
+                            {
+                                (*outImageData)[i * 3] = unfilteredData[i * 4];         /* R */
+                                (*outImageData)[i * 3 + 1] = unfilteredData[i * 4 + 1]; /* G */
+                                (*outImageData)[i * 3 + 2] = unfilteredData[i * 4 + 2]; /* B */
+                                /* Alpha at unfilteredData[i * 4 + 3] is ignored */
+                            }
+                            success = TRUE;
+                            fileLoggerAddDebugEntry("Converted PNG RGBA data to RGB output format");
+                            break;
+
+                        default:
+                            /* Other color types not yet implemented */
+                            fileLoggerAddDebugEntry("Unsupported PNG color type for conversion");
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        fileLoggerAddDebugEntry("PNG filter processing failed");
+                    }
+
+                    /* Free unfiltered data */
+                    free(unfilteredData);
+                }
+                else
+                {
+                    fileLoggerAddDebugEntry("Failed to allocate memory for unfiltered data");
+                }
+            }
+            else
+            {
+                fileLoggerAddDebugEntry("Invalid bytes per pixel value for PNG format");
+            }
+
+            /* Free decompressed data */
+            free(decompressedData);
+
+            /* If we successfully processed the PNG, we're done */
+            if (success)
+            {
+                fileLoggerAddDebugEntry("Successfully processed PNG image data");
+                return TRUE;
+            }
+
+            /* Fall back to test pattern if processing failed */
+            fileLoggerAddDebugEntry("PNG processing failed, using test pattern as fallback");
+            generateTestPattern(outImageData, width, height);
         }
         else
         {
