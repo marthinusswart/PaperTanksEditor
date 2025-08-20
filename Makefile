@@ -61,15 +61,9 @@ copy-assets:
 	@echo "Copying assets..."
 	@if [ -d "assets" ]; then \
 		mkdir -p $(BINDIR)/assets; \
-		if [ -f "assets/disk-space.ilbm" ]; then \
-			cp -f assets/disk-space.ilbm $(BINDIR)/assets/; \
-			echo "  Copied disk-space.ilbm"; \
-		else \
-			echo "  No ILBM assets found"; \
-		fi; \
 		# Find and copy PNG files if any exist \
 		find assets -name "*.png" -type f -exec cp -f {} $(BINDIR)/assets/ \; 2>/dev/null && echo "  Copied PNG assets" || echo "  No PNG assets found"; \
-		find assets -type f -not -name "*.ilbm" -not -name "*.png" -exec cp -f {} $(BINDIR)/assets/ \; 2>/dev/null || echo "  No other assets to copy"; \
+		find assets -type f -not -name "*.png" -exec cp -f {} $(BINDIR)/assets/ \; 2>/dev/null || echo "  No other assets to copy"; \
 	else \
 		echo "  Assets directory not found"; \
 	fi

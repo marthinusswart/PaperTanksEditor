@@ -19,10 +19,14 @@
 #include "imgpngutils.h"
 #include "imgpaletteutils.h"
 
-/* PNG specific functions */
+/* Forward declarations for internal functions */
 static BOOL validatePNGSignature(FILE *file);
 static BOOL readPNGChunk(FILE *file, ULONG *chunkType, ULONG *chunkLength, UBYTE **chunkData);
 static BOOL decodePNGHeader(UBYTE *data, PNGHeader *header);
+static BOOL processPNGPaletteChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE **palette, ULONG *paletteSize, BOOL *hasPalette);
+static BOOL processPNGImageDataChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE **outImageData, ULONG width, ULONG height,
+                                     ImgPalette *imgPalette, FILE *file, BOOL *foundIDAT);
+static void generateTestPattern(UBYTE **outImageData, ULONG width, ULONG height);
 
 /* Main PNG loading function - simplified version for 24-bit RGB PNGs */
 BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalette **outPalette)
@@ -192,87 +196,13 @@ BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalet
         switch (chunkType)
         {
         case PNG_CHUNK_PLTE:
-            /* Store palette data */
-            if (chunkLength % 3 == 0)
-            {
-                paletteSize = chunkLength;
-                palette = (UBYTE *)malloc(paletteSize);
-                if (palette)
-                {
-                    memcpy(palette, chunkData, paletteSize);
-                    hasPalette = TRUE;
-
-                    sprintf(logMessage, "Found PLTE chunk with %lu colors", paletteSize / 3);
-                    fileLoggerAddEntry(logMessage);
-                }
-            }
+            /* Process the palette chunk */
+            processPNGPaletteChunk(chunkData, chunkLength, &palette, &paletteSize, &hasPalette);
             break;
 
         case PNG_CHUNK_IDAT:
-            /* This is where we would typically decompress the IDAT chunks and process them
-               For now, we'll still set foundIDAT to TRUE so processing continues */
-            foundIDAT = TRUE;
-            fileLoggerAddEntry("Found IDAT chunk - using PNG data for direct 24-bit RGB drawing");
-
-            /* Make sure we have memory allocated for the 24-bit RGB output image */
-            if (*outImageData == NULL)
-            {
-                *outImageData = (UBYTE *)malloc(width * height * 3);
-                if (!*outImageData)
-                {
-                    fileLoggerAddEntry("Failed to allocate memory for image data");
-                    if (imgPalette)
-                        freeImgPalette(imgPalette);
-                    fclose(file);
-                    return FALSE;
-                }
-            }
-
-            /* For now, let's still create a 4-color test pattern, but store it as direct 24-bit RGB
-               In a real implementation, we would decompress and process the actual PNG data here */
-            for (ULONG y = 0; y < height; y++)
-            {
-                for (ULONG x = 0; x < width; x++)
-                {
-                    ULONG offset = (y * width + x) * 3;
-
-                    /* Using RGB format consistently (not BGRA) */
-                    if (x < width / 2)
-                    {
-                        if (y < height / 2)
-                        {
-                            // Top-left: RED (255, 0, 0)
-                            (*outImageData)[offset] = 255;   /* R */
-                            (*outImageData)[offset + 1] = 0; /* G */
-                            (*outImageData)[offset + 2] = 0; /* B */
-                        }
-                        else
-                        {
-                            // Bottom-left: GREEN (0, 255, 0)
-                            (*outImageData)[offset] = 0;       /* R */
-                            (*outImageData)[offset + 1] = 255; /* G */
-                            (*outImageData)[offset + 2] = 0;   /* B */
-                        }
-                    }
-                    else
-                    {
-                        if (y < height / 2)
-                        {
-                            // Top-right: BLUE (0, 0, 255)
-                            (*outImageData)[offset] = 0;       /* R */
-                            (*outImageData)[offset + 1] = 0;   /* G */
-                            (*outImageData)[offset + 2] = 255; /* B */
-                        }
-                        else
-                        {
-                            // Bottom-right: WHITE (255, 255, 255)
-                            (*outImageData)[offset] = 255;     /* R */
-                            (*outImageData)[offset + 1] = 255; /* G */
-                            (*outImageData)[offset + 2] = 255; /* B */
-                        }
-                    }
-                }
-            }
+            /* Process the image data chunk */
+            processPNGImageDataChunk(chunkData, chunkLength, outImageData, width, height, imgPalette, file, &foundIDAT);
             break;
 
         case PNG_CHUNK_IEND:
@@ -444,6 +374,121 @@ static BOOL readPNGChunk(FILE *file, ULONG *chunkType, ULONG *chunkLength, UBYTE
         *chunkData = NULL;
         return FALSE;
     }
+
+    return TRUE;
+}
+
+/* Generate a 4-color test pattern in 24-bit RGB format */
+static void generateTestPattern(UBYTE **outImageData, ULONG width, ULONG height)
+{
+    /* For now, let's create a 4-color test pattern, but store it as direct 24-bit RGB
+       In a real implementation, we would decompress and process the actual PNG data here */
+    for (ULONG y = 0; y < height; y++)
+    {
+        for (ULONG x = 0; x < width; x++)
+        {
+            ULONG offset = (y * width + x) * 3;
+
+            /* Using RGB format consistently (not BGRA) */
+            if (x < width / 2)
+            {
+                if (y < height / 2)
+                {
+                    // Top-left: RED (255, 0, 0)
+                    (*outImageData)[offset] = 255;   /* R */
+                    (*outImageData)[offset + 1] = 0; /* G */
+                    (*outImageData)[offset + 2] = 0; /* B */
+                }
+                else
+                {
+                    // Bottom-left: GREEN (0, 255, 0)
+                    (*outImageData)[offset] = 0;       /* R */
+                    (*outImageData)[offset + 1] = 255; /* G */
+                    (*outImageData)[offset + 2] = 0;   /* B */
+                }
+            }
+            else
+            {
+                if (y < height / 2)
+                {
+                    // Top-right: BLUE (0, 0, 255)
+                    (*outImageData)[offset] = 0;       /* R */
+                    (*outImageData)[offset + 1] = 0;   /* G */
+                    (*outImageData)[offset + 2] = 255; /* B */
+                }
+                else
+                {
+                    // Bottom-right: WHITE (255, 255, 255)
+                    (*outImageData)[offset] = 255;     /* R */
+                    (*outImageData)[offset + 1] = 255; /* G */
+                    (*outImageData)[offset + 2] = 255; /* B */
+                }
+            }
+        }
+    }
+}
+
+/* Process a PNG IDAT (image data) chunk */
+static BOOL processPNGImageDataChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE **outImageData, ULONG width, ULONG height,
+                                     ImgPalette *imgPalette, FILE *file, BOOL *foundIDAT)
+{
+    /* Validate parameters */
+    if (!chunkData || !outImageData || !foundIDAT || width <= 0 || height <= 0)
+        return FALSE;
+
+    /* Set the found flag so we know we encountered an IDAT chunk */
+    *foundIDAT = TRUE;
+    fileLoggerAddEntry("Found IDAT chunk - using PNG data for direct 24-bit RGB drawing");
+
+    /* Make sure we have memory allocated for the 24-bit RGB output image */
+    if (*outImageData == NULL)
+    {
+        *outImageData = (UBYTE *)malloc(width * height * 3);
+        if (!*outImageData)
+        {
+            fileLoggerAddEntry("Failed to allocate memory for image data");
+            if (imgPalette)
+                freeImgPalette(imgPalette);
+            if (file)
+                fclose(file);
+            return FALSE;
+        }
+    }
+
+    /* Generate a test pattern instead of decompressing actual PNG data */
+    generateTestPattern(outImageData, width, height);
+
+    return TRUE;
+}
+
+/* Process a PNG PLTE (palette) chunk */
+static BOOL processPNGPaletteChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE **palette, ULONG *paletteSize, BOOL *hasPalette)
+{
+    char logMessage[256];
+
+    /* Validate parameters */
+    if (!chunkData || !palette || !paletteSize || !hasPalette)
+        return FALSE;
+
+    /* PNG palette entries must be RGB triplets */
+    if (chunkLength % 3 != 0)
+        return FALSE;
+
+    /* Store palette size */
+    *paletteSize = chunkLength;
+
+    /* Allocate memory for the palette data */
+    *palette = (UBYTE *)malloc(*paletteSize);
+    if (!*palette)
+        return FALSE;
+
+    /* Copy palette data */
+    memcpy(*palette, chunkData, *paletteSize);
+    *hasPalette = TRUE;
+
+    /* Log palette information */
+    sprintf(logMessage, "Found PLTE chunk with %lu colors", *paletteSize / 3);
+    fileLoggerAddEntry(logMessage);
 
     return TRUE;
 }
