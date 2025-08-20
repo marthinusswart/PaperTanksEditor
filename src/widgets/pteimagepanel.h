@@ -59,7 +59,6 @@ struct PTEImagePanelData
     WORD imageWidth;
     WORD imageHeight;
     ImgPalette *imgPalette;
-    BOOL useBGRA;     /* Use BGRA order instead of RGBA */
     BOOL isPNG;       /* Indicates the image data is from a PNG file */
     UBYTE *transMask; /* Transparency mask, 1 bit per pixel, 1=transparent */
 };

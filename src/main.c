@@ -73,7 +73,7 @@ int main(void)
     }
     else
     {
-        fileLoggerAddEntry("PTEImagePanel class created successfully");
+        fileLoggerAddDebugEntry("PTEImagePanel class created successfully");
     }
 
     if (!pteImagePanelClass->mcc_Class)
@@ -85,9 +85,9 @@ int main(void)
     else
     {
         char logMessage[256];
-        fileLoggerAddEntry("PTEImagePanel class instance created successfully");
+        fileLoggerAddDebugEntry("PTEImagePanel class instance created successfully");
         loggerFormatMessage(logMessage, "PTEImagePanel: mcc Address: 0x%08lx", (ULONG)pteImagePanelClass->mcc_Class);
-        fileLoggerAddEntry(logMessage);
+        fileLoggerAddDebugEntry(logMessage);
     }
 
     /* PNG Test */
@@ -97,7 +97,7 @@ int main(void)
     BOOL pngLoaded = loadPNGToBitmapObject("PROGDIR:assets/tank.png", &pngImageData, &pngPalette);
     if (pngLoaded)
     {
-        fileLoggerAddEntry("PNG image loaded successfully");
+        fileLoggerAddDebugEntry("PNG image loaded successfully");
         // We'll use this PNG data in our PTEImagePanel
     }
     else

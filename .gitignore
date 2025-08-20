@@ -58,5 +58,6 @@ obj/*
 bin/*
 utilityapps/paletteanalyzer/obj/*
 utilityapps/paletteanalyzer/bin/*
-Disk.info
+Disk.info*
 _UAEFSDB.___
+
