@@ -125,9 +125,9 @@ int main(void)
                 WindowContents, VGroup, GroupFrame,
                     
                     Child, VGroup,
-                        Child, RectangleObject, MUIA_Width, 100, MUIA_Height, 50, MUIA_Background, MUII_ButtonBack, MUIA_Frame, "box", End, 
+                        // Child, RectangleObject, MUIA_Width, 100, MUIA_Height, 50, MUIA_Background, MUII_ButtonBack, MUIA_Frame, "box", End, 
                         // Create the custom object with attributes in MUI style                                               
-                        /*Child, PTEImagePanelObject,  
+                        Child, PTEImagePanelObject,  
                             MUIA_Width, 100,
                             MUIA_Height, 50,
                             MUIA_Background, MUII_ButtonBack,
@@ -139,7 +139,7 @@ int main(void)
                             PTEA_ImageWidth, 256,
                             PTEA_EnableRGB, TRUE,
                             PTEA_ILBMPalette, outILBMPalette,
-                        End,*/
+                        End,
                     End,
 
                     Child, VGroup, GroupFrameT("Status Messages"),                    
