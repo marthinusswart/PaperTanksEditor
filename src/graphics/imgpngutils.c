@@ -378,11 +378,12 @@ static BOOL readPNGChunk(FILE *file, ULONG *chunkType, ULONG *chunkLength, UBYTE
     return TRUE;
 }
 
-/* Generate a 4-color test pattern in 24-bit RGB format */
+/* Generate a 6-color test pattern in 24-bit RGB format */
 static void generateTestPattern(UBYTE **outImageData, ULONG width, ULONG height)
 {
-    /* For now, let's create a 4-color test pattern, but store it as direct 24-bit RGB
-       In a real implementation, we would decompress and process the actual PNG data here */
+    /* Create a 6-color test pattern with red, green, blue, white, black, and yellow,
+       storing it as direct 24-bit RGB. In a real implementation, we would decompress
+       and process the actual PNG data here */
     for (ULONG y = 0; y < height; y++)
     {
         for (ULONG x = 0; x < width; x++)
@@ -390,7 +391,7 @@ static void generateTestPattern(UBYTE **outImageData, ULONG width, ULONG height)
             ULONG offset = (y * width + x) * 3;
 
             /* Using RGB format consistently (not BGRA) */
-            if (x < width / 2)
+            if (x < width / 3)
             {
                 if (y < height / 2)
                 {
@@ -407,21 +408,38 @@ static void generateTestPattern(UBYTE **outImageData, ULONG width, ULONG height)
                     (*outImageData)[offset + 2] = 0;   /* B */
                 }
             }
-            else
+            else if (x < 2 * width / 3)
             {
                 if (y < height / 2)
                 {
-                    // Top-right: BLUE (0, 0, 255)
+                    // Top-middle: BLUE (0, 0, 255)
                     (*outImageData)[offset] = 0;       /* R */
                     (*outImageData)[offset + 1] = 0;   /* G */
                     (*outImageData)[offset + 2] = 255; /* B */
                 }
                 else
                 {
-                    // Bottom-right: WHITE (255, 255, 255)
+                    // Bottom-middle: WHITE (255, 255, 255)
                     (*outImageData)[offset] = 255;     /* R */
                     (*outImageData)[offset + 1] = 255; /* G */
                     (*outImageData)[offset + 2] = 255; /* B */
+                }
+            }
+            else
+            {
+                if (y < height / 2)
+                {
+                    // Top-right: BLACK (0, 0, 0)
+                    (*outImageData)[offset] = 0;     /* R */
+                    (*outImageData)[offset + 1] = 0; /* G */
+                    (*outImageData)[offset + 2] = 0; /* B */
+                }
+                else
+                {
+                    // Bottom-right: YELLOW (255, 255, 0)
+                    (*outImageData)[offset] = 255;     /* R */
+                    (*outImageData)[offset + 1] = 255; /* G */
+                    (*outImageData)[offset + 2] = 0;   /* B */
                 }
             }
         }
