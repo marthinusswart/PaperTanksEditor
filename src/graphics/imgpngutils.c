@@ -26,9 +26,12 @@ static BOOL validatePNGSignature(FILE *file);
 static BOOL readPNGChunk(FILE *file, ULONG *chunkType, ULONG *chunkLength, UBYTE **chunkData);
 static BOOL decodePNGHeader(UBYTE *data, PNGHeader *header);
 static BOOL processPNGPaletteChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE **palette, ULONG *paletteSize, BOOL *hasPalette);
+static BOOL processPNGTransparencyChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE **transData, ULONG *transSize, BOOL *hasTrans, UBYTE colorType);
 static BOOL processPNGImageDataChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE **outImageData, ULONG width, ULONG height,
-                                     ImgPalette *imgPalette, FILE *file, BOOL *foundIDAT, BOOL useTestPattern, PNGHeader *pngHeader);
+                                     ImgPalette *imgPalette, FILE *file, BOOL *foundIDAT, BOOL useTestPattern, PNGHeader *pngHeader,
+                                     UBYTE *transData, ULONG transSize, BOOL hasTrans);
 static void generateTestPattern(UBYTE **outImageData, ULONG width, ULONG height);
+static void logTestPatternColorGrid(void);
 
 /* Main PNG loading function - simplified version for 24-bit RGB PNGs */
 BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalette **outPalette)
@@ -184,6 +187,11 @@ BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalet
     ULONG paletteSize = 0;
     BOOL hasPalette = FALSE;
 
+    /* Transparency data */
+    UBYTE *transData = NULL;
+    ULONG transSize = 0;
+    BOOL hasTrans = FALSE;
+
     /* Track if we found IDAT chunks */
     BOOL foundIDAT = FALSE;
 
@@ -193,7 +201,6 @@ BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalet
     /* Read all chunks until IEND */
     while (readPNGChunk(file, &chunkType, &chunkLength, &chunkData))
     {
-
         /* Process the chunk based on its type */
         switch (chunkType)
         {
@@ -202,9 +209,14 @@ BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalet
             processPNGPaletteChunk(chunkData, chunkLength, &palette, &paletteSize, &hasPalette);
             break;
 
+        case PNG_CHUNK_TRNS:
+            /* Process the transparency chunk */
+            processPNGTransparencyChunk(chunkData, chunkLength, &transData, &transSize, &hasTrans, pngHeader.colorType);
+            break;
+
         case PNG_CHUNK_IDAT:
             /* Process the image data chunk */
-            processPNGImageDataChunk(chunkData, chunkLength, outImageData, width, height, imgPalette, file, &foundIDAT, FALSE, &pngHeader);
+            processPNGImageDataChunk(chunkData, chunkLength, outImageData, width, height, imgPalette, file, &foundIDAT, FALSE, &pngHeader, transData, transSize, hasTrans);
             break;
 
         case PNG_CHUNK_IEND:
@@ -239,6 +251,26 @@ BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalet
             /* Copy the palette data */
             memcpy(imgPalette->colorRegs, palette, numColors * 3);
             imgPalette->allocated = TRUE;
+
+            /* Set transparent color if we have transparency data */
+            if (hasTrans && transData && transSize > 0 && pngHeader.colorType == PNG_COLOR_TYPE_PALETTE)
+            {
+                /* For palette images, each byte in transData represents an alpha value for the corresponding palette entry */
+                imgPalette->transparentColor = 0; /* Default to first entry */
+
+                /* Find the first fully transparent color (value 0) */
+                for (ULONG i = 0; i < transSize && i < numColors; i++)
+                {
+                    if (transData[i] == 0)
+                    {
+                        imgPalette->transparentColor = i;
+                        imgPalette->hasTransparency = TRUE;
+                        sprintf(logMessage, "Setting transparent color to index %lu", i);
+                        fileLoggerAddDebugEntry(logMessage);
+                        break;
+                    }
+                }
+            }
 
             /* Direct 1:1 pen mapping */
             for (ULONG i = 0; i < 256; i++)
@@ -277,6 +309,12 @@ BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalet
         }
     }
 
+    /* Free transparency data if allocated */
+    if (transData)
+    {
+        free(transData);
+    }
+
     if (foundIDAT)
     {
         fileLoggerAddDebugEntry("Successfully generated RGB data from PNG");
@@ -302,201 +340,351 @@ BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalet
         }
     }
 
-    /* Free temporary buffers */
+    /* Free palette memory */
     if (palette)
         free(palette);
 
     /* Close the file */
-    if (file)
-        fclose(file);
+    fclose(file);
 
     return success;
 }
 
-/* Load PNG directly to RGB bitmap */
+/* Load a PNG directly to 24-bit RGB bitmap - simplified version */
 BOOL loadPNGToBitmapObjectRGB(CONST_STRPTR filename, UBYTE **outImageData)
 {
-    /* For simple implementation, just use the main function without palette */
+    /* Just use the full function, ignoring palette output */
     return loadPNGToBitmapObject(filename, outImageData, NULL);
 }
 
-/* Validate PNG signature (first 8 bytes) */
+/* Check if a file has a valid PNG signature */
 static BOOL validatePNGSignature(FILE *file)
 {
-    UBYTE signature[8];
-    UBYTE pngSignature[8] = {137, 80, 78, 71, 13, 10, 26, 10};
+    const UBYTE pngSignature[8] = {137, 80, 78, 71, 13, 10, 26, 10};
+    UBYTE buffer[8];
 
-    if (fread(signature, 1, 8, file) != 8)
-        return FALSE;
+    /* Go to the beginning of the file */
+    fseek(file, 0, SEEK_SET);
 
-    return memcmp(signature, pngSignature, 8) == 0;
-}
-
-/* Read a PNG chunk */
-static BOOL readPNGChunk(FILE *file, ULONG *chunkType, ULONG *chunkLength, UBYTE **chunkData)
-{
-    UBYTE lengthBytes[4];
-    UBYTE typeBytes[4];
-    UBYTE crcBytes[4];
-
-    /* Read chunk length (big endian) */
-    if (fread(lengthBytes, 1, 4, file) != 4)
-        return FALSE;
-
-    *chunkLength = (lengthBytes[0] << 24) | (lengthBytes[1] << 16) |
-                   (lengthBytes[2] << 8) | lengthBytes[3];
-
-    /* Read chunk type */
-    if (fread(typeBytes, 1, 4, file) != 4)
-        return FALSE;
-
-    *chunkType = (typeBytes[0] << 24) | (typeBytes[1] << 16) |
-                 (typeBytes[2] << 8) | typeBytes[3];
-
-    /* Allocate memory for chunk data */
-    *chunkData = (UBYTE *)malloc(*chunkLength);
-    if (!*chunkData)
-        return FALSE;
-
-    /* Read chunk data */
-    if (*chunkLength > 0)
+    /* Read the signature bytes */
+    if (fread(buffer, 1, 8, file) != 8)
     {
-        if (fread(*chunkData, 1, *chunkLength, file) != *chunkLength)
-        {
-            free(*chunkData);
-            *chunkData = NULL;
-            return FALSE;
-        }
+        fileLoggerAddDebugEntry("Failed to read PNG signature bytes");
+        return FALSE;
     }
 
-    /* Skip CRC */
-    if (fread(crcBytes, 1, 4, file) != 4)
+    /* Compare with the expected PNG signature */
+    if (memcmp(buffer, pngSignature, 8) != 0)
     {
-        free(*chunkData);
-        *chunkData = NULL;
+        fileLoggerAddDebugEntry("Invalid PNG signature");
         return FALSE;
     }
 
     return TRUE;
 }
 
-/* Generate a 16-color test pattern in 24-bit RGB format */
+/* Read a PNG chunk from a file */
+static BOOL readPNGChunk(FILE *file, ULONG *chunkType, ULONG *chunkLength, UBYTE **chunkData)
+{
+    UBYTE buffer[8];
+    char chunkName[5];
+
+    /* Read the chunk length and type (8 bytes total) */
+    if (fread(buffer, 1, 8, file) != 8)
+    {
+        fileLoggerAddDebugEntry("Failed to read PNG chunk header");
+        return FALSE;
+    }
+
+    /* Parse the chunk length (big endian) */
+    *chunkLength = ((ULONG)buffer[0] << 24) | ((ULONG)buffer[1] << 16) |
+                   ((ULONG)buffer[2] << 8) | (ULONG)buffer[3];
+
+    /* Parse the chunk type */
+    *chunkType = ((ULONG)buffer[4] << 24) | ((ULONG)buffer[5] << 16) |
+                 ((ULONG)buffer[6] << 8) | (ULONG)buffer[7];
+
+    /* For logging, create a readable chunk name */
+    chunkName[0] = buffer[4];
+    chunkName[1] = buffer[5];
+    chunkName[2] = buffer[6];
+    chunkName[3] = buffer[7];
+    chunkName[4] = '\0';
+
+    /* Log the chunk information */
+    char logMessage[256];
+    sprintf(logMessage, "Found PNG chunk: %s, length: %lu bytes", chunkName, *chunkLength);
+    fileLoggerAddDebugEntry(logMessage);
+
+    /* Allocate memory for the chunk data (if there is any) */
+    if (*chunkLength > 0)
+    {
+        *chunkData = (UBYTE *)malloc(*chunkLength);
+        if (!*chunkData)
+        {
+            fileLoggerAddDebugEntry("Failed to allocate memory for PNG chunk data");
+            return FALSE;
+        }
+
+        /* Read the chunk data */
+        if (fread(*chunkData, 1, *chunkLength, file) != *chunkLength)
+        {
+            fileLoggerAddDebugEntry("Failed to read PNG chunk data");
+            free(*chunkData);
+            *chunkData = NULL;
+            return FALSE;
+        }
+    }
+    else
+    {
+        *chunkData = NULL;
+    }
+
+    /* Skip the CRC (4 bytes) */
+    fseek(file, 4, SEEK_CUR);
+
+    return TRUE;
+}
+
+/* Decode a PNG header (IHDR chunk) */
+static BOOL decodePNGHeader(UBYTE *data, PNGHeader *header)
+{
+    if (!data || !header)
+        return FALSE;
+
+    /* Parse the header fields (big endian) */
+    header->width = ((ULONG)data[0] << 24) | ((ULONG)data[1] << 16) |
+                    ((ULONG)data[2] << 8) | (ULONG)data[3];
+
+    header->height = ((ULONG)data[4] << 24) | ((ULONG)data[5] << 16) |
+                     ((ULONG)data[6] << 8) | (ULONG)data[7];
+
+    header->bitDepth = data[8];
+    header->colorType = data[9];
+    header->compressionMethod = data[10];
+    header->filterMethod = data[11];
+    header->interlaceMethod = data[12];
+
+    /* Log the header information */
+    char logMessage[256];
+    sprintf(logMessage, "PNG Header: %lu x %lu pixels, %u-bit, color type %u",
+            header->width, header->height, header->bitDepth, header->colorType);
+    fileLoggerAddDebugEntry(logMessage);
+
+    /* Validate the header */
+    if (header->width <= 0 || header->height <= 0)
+    {
+        fileLoggerAddDebugEntry("Invalid PNG dimensions");
+        return FALSE;
+    }
+
+    /* Ensure we can handle the bit depth and color type */
+    BOOL supported = FALSE;
+
+    switch (header->colorType)
+    {
+    case PNG_COLOR_TYPE_GRAYSCALE:
+        supported = (header->bitDepth == 1 || header->bitDepth == 2 ||
+                     header->bitDepth == 4 || header->bitDepth == 8 ||
+                     header->bitDepth == 16);
+        break;
+
+    case PNG_COLOR_TYPE_RGB:
+        supported = (header->bitDepth == 8 || header->bitDepth == 16);
+        break;
+
+    case PNG_COLOR_TYPE_PALETTE:
+        supported = (header->bitDepth == 1 || header->bitDepth == 2 ||
+                     header->bitDepth == 4 || header->bitDepth == 8);
+        break;
+
+    case PNG_COLOR_TYPE_GRAYSCALE_ALPHA:
+        supported = (header->bitDepth == 8 || header->bitDepth == 16);
+        break;
+
+    case PNG_COLOR_TYPE_RGBA:
+        supported = (header->bitDepth == 8 || header->bitDepth == 16);
+        break;
+
+    default:
+        supported = FALSE;
+        break;
+    }
+
+    if (!supported)
+    {
+        sprintf(logMessage, "Unsupported PNG color type %u with bit depth %u",
+                header->colorType, header->bitDepth);
+        fileLoggerAddDebugEntry(logMessage);
+        return FALSE;
+    }
+
+    /* Check compression, filter, and interlace methods */
+    if (header->compressionMethod != 0)
+    {
+        fileLoggerAddDebugEntry("Unsupported PNG compression method");
+        return FALSE;
+    }
+
+    if (header->filterMethod != 0)
+    {
+        fileLoggerAddDebugEntry("Unsupported PNG filter method");
+        return FALSE;
+    }
+
+    /* Warning for interlaced images - we don't fully support them */
+    if (header->interlaceMethod != 0)
+    {
+        fileLoggerAddDebugEntry("Warning: Interlaced PNG may not display correctly");
+    }
+
+    return TRUE;
+}
+
+/* Process a PNG PLTE (palette) chunk */
+static BOOL processPNGPaletteChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE **palette, ULONG *paletteSize, BOOL *hasPalette)
+{
+    /* Validate parameters */
+    if (!chunkData || !palette || !paletteSize || !hasPalette)
+        return FALSE;
+
+    /* Check if we already have a palette */
+    if (*hasPalette)
+    {
+        fileLoggerAddDebugEntry("Multiple PLTE chunks found, using only the first one");
+        return FALSE;
+    }
+
+    /* Check that the palette size is valid (must be a multiple of 3) */
+    if (chunkLength % 3 != 0)
+    {
+        fileLoggerAddDebugEntry("Invalid palette length, not a multiple of 3");
+        return FALSE;
+    }
+
+    /* Allocate memory for the palette */
+    *palette = (UBYTE *)malloc(chunkLength);
+    if (!*palette)
+    {
+        fileLoggerAddDebugEntry("Failed to allocate memory for palette");
+        return FALSE;
+    }
+
+    /* Copy the palette data */
+    memcpy(*palette, chunkData, chunkLength);
+    *paletteSize = chunkLength;
+    *hasPalette = TRUE;
+
+    /* Log information about the palette */
+    ULONG numColors = chunkLength / 3;
+    char logMessage[256];
+    sprintf(logMessage, "Palette: %lu colors", numColors);
+    fileLoggerAddDebugEntry(logMessage);
+
+    return TRUE;
+}
+
+/* Process a PNG tRNS (transparency) chunk */
+static BOOL processPNGTransparencyChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE **transData, ULONG *transSize, BOOL *hasTrans, UBYTE colorType)
+{
+    /* Validate parameters */
+    if (!chunkData || !transData || !transSize || !hasTrans)
+        return FALSE;
+
+    /* Check if we already have transparency data */
+    if (*hasTrans)
+    {
+        fileLoggerAddDebugEntry("Multiple tRNS chunks found, using only the first one");
+        return FALSE;
+    }
+
+    /* Process transparency based on color type */
+    fileLoggerAddDebugEntry("Processing tRNS chunk (transparency data)");
+
+    /* Allocate memory for transparency data */
+    *transData = (UBYTE *)malloc(chunkLength);
+    if (!*transData)
+    {
+        fileLoggerAddDebugEntry("Failed to allocate memory for transparency data");
+        return FALSE;
+    }
+
+    /* Copy transparency data */
+    memcpy(*transData, chunkData, chunkLength);
+    *transSize = chunkLength;
+    *hasTrans = TRUE;
+
+    char logMessage[256];
+    sprintf(logMessage, "Transparency data: %lu bytes for color type %u", chunkLength, colorType);
+    fileLoggerAddDebugEntry(logMessage);
+
+    return TRUE;
+}
+
+/* Generate a test pattern in the output buffer for debugging */
 static void generateTestPattern(UBYTE **outImageData, ULONG width, ULONG height)
 {
-    /* Create a 16-color test pattern, storing it as direct 24-bit RGB.
-       In a real implementation, we would decompress and process the actual PNG data here */
+    /* Simple test pattern of colorful blocks */
+    fileLoggerAddDebugEntry("Generating test pattern of colored blocks");
+
+    /* Array of colors for the test pattern (R,G,B triplets) */
+    const UBYTE colors[16][3] = {
+        {255, 0, 0},     /* Red */
+        {0, 255, 0},     /* Green */
+        {0, 0, 255},     /* Blue */
+        {255, 255, 0},   /* Yellow */
+        {255, 128, 0},   /* Orange */
+        {128, 0, 128},   /* Purple */
+        {0, 255, 255},   /* Cyan */
+        {255, 0, 255},   /* Magenta */
+        {128, 64, 0},    /* Brown */
+        {255, 128, 128}, /* Pink */
+        {128, 128, 128}, /* Gray */
+        {128, 255, 0},   /* Lime */
+        {0, 128, 128},   /* Teal */
+        {255, 215, 0},   /* Gold */
+        {255, 255, 255}, /* White */
+        {0, 0, 0}        /* Black */
+    };
+
+    /* Calculate the size of each block in the grid */
+    ULONG blockWidth = width / 4;
+    ULONG blockHeight = height / 4;
+
+    /* Make sure blocks have at least 1 pixel */
+    if (blockWidth < 1)
+        blockWidth = 1;
+    if (blockHeight < 1)
+        blockHeight = 1;
+
+    /* Fill the output image with the pattern */
     for (ULONG y = 0; y < height; y++)
     {
         for (ULONG x = 0; x < width; x++)
         {
-            ULONG offset = (y * width + x) * 3;
-            ULONG colSection = x / (width / 4);  /* 4 columns */
-            ULONG rowSection = y / (height / 4); /* 4 rows */
+            /* Determine which block this pixel belongs to */
+            ULONG blockX = x / blockWidth;
+            ULONG blockY = y / blockHeight;
 
-            /* 16 different colors based on column and row */
-            switch (rowSection * 4 + colSection)
-            {
-            case 0:                              /* Row 0, Col 0: RED (255, 0, 0) */
-                (*outImageData)[offset] = 255;   /* R */
-                (*outImageData)[offset + 1] = 0; /* G */
-                (*outImageData)[offset + 2] = 0; /* B */
-                break;
+            /* Limit to 4x4 grid */
+            if (blockX > 3)
+                blockX = 3;
+            if (blockY > 3)
+                blockY = 3;
 
-            case 1:                                /* Row 0, Col 1: GREEN (0, 255, 0) */
-                (*outImageData)[offset] = 0;       /* R */
-                (*outImageData)[offset + 1] = 255; /* G */
-                (*outImageData)[offset + 2] = 0;   /* B */
-                break;
+            /* Determine color index */
+            ULONG colorIndex = blockY * 4 + blockX;
 
-            case 2:                                /* Row 0, Col 2: BLUE (0, 0, 255) */
-                (*outImageData)[offset] = 0;       /* R */
-                (*outImageData)[offset + 1] = 0;   /* G */
-                (*outImageData)[offset + 2] = 255; /* B */
-                break;
-
-            case 3:                                /* Row 0, Col 3: YELLOW (255, 255, 0) */
-                (*outImageData)[offset] = 255;     /* R */
-                (*outImageData)[offset + 1] = 255; /* G */
-                (*outImageData)[offset + 2] = 0;   /* B */
-                break;
-
-            case 4:                                /* Row 1, Col 0: ORANGE (255, 165, 0) */
-                (*outImageData)[offset] = 255;     /* R */
-                (*outImageData)[offset + 1] = 165; /* G */
-                (*outImageData)[offset + 2] = 0;   /* B */
-                break;
-
-            case 5:                                /* Row 1, Col 1: PURPLE (128, 0, 128) */
-                (*outImageData)[offset] = 128;     /* R */
-                (*outImageData)[offset + 1] = 0;   /* G */
-                (*outImageData)[offset + 2] = 128; /* B */
-                break;
-
-            case 6:                                /* Row 1, Col 2: CYAN (0, 255, 255) */
-                (*outImageData)[offset] = 0;       /* R */
-                (*outImageData)[offset + 1] = 255; /* G */
-                (*outImageData)[offset + 2] = 255; /* B */
-                break;
-
-            case 7:                                /* Row 1, Col 3: MAGENTA (255, 0, 255) */
-                (*outImageData)[offset] = 255;     /* R */
-                (*outImageData)[offset + 1] = 0;   /* G */
-                (*outImageData)[offset + 2] = 255; /* B */
-                break;
-
-            case 8:                               /* Row 2, Col 0: BROWN (165, 42, 42) */
-                (*outImageData)[offset] = 165;    /* R */
-                (*outImageData)[offset + 1] = 42; /* G */
-                (*outImageData)[offset + 2] = 42; /* B */
-                break;
-
-            case 9:                                /* Row 2, Col 1: PINK (255, 192, 203) */
-                (*outImageData)[offset] = 255;     /* R */
-                (*outImageData)[offset + 1] = 192; /* G */
-                (*outImageData)[offset + 2] = 203; /* B */
-                break;
-
-            case 10:                               /* Row 2, Col 2: GRAY (128, 128, 128) */
-                (*outImageData)[offset] = 128;     /* R */
-                (*outImageData)[offset + 1] = 128; /* G */
-                (*outImageData)[offset + 2] = 128; /* B */
-                break;
-
-            case 11:                               /* Row 2, Col 3: LIME (0, 255, 0) */
-                (*outImageData)[offset] = 50;      /* R */
-                (*outImageData)[offset + 1] = 205; /* G */
-                (*outImageData)[offset + 2] = 50;  /* B */
-                break;
-
-            case 12:                               /* Row 3, Col 0: TEAL (0, 128, 128) */
-                (*outImageData)[offset] = 0;       /* R */
-                (*outImageData)[offset + 1] = 128; /* G */
-                (*outImageData)[offset + 2] = 128; /* B */
-                break;
-
-            case 13:                               /* Row 3, Col 1: GOLD (255, 215, 0) */
-                (*outImageData)[offset] = 255;     /* R */
-                (*outImageData)[offset + 1] = 215; /* G */
-                (*outImageData)[offset + 2] = 0;   /* B */
-                break;
-
-            case 14:                               /* Row 3, Col 2: WHITE (255, 255, 255) */
-                (*outImageData)[offset] = 255;     /* R */
-                (*outImageData)[offset + 1] = 255; /* G */
-                (*outImageData)[offset + 2] = 255; /* B */
-                break;
-
-            case 15:                             /* Row 3, Col 3: BLACK (0, 0, 0) */
-                (*outImageData)[offset] = 0;     /* R */
-                (*outImageData)[offset + 1] = 0; /* G */
-                (*outImageData)[offset + 2] = 0; /* B */
-                break;
-            }
+            /* Write the RGB values */
+            ULONG pixelOffset = (y * width + x) * 3;
+            (*outImageData)[pixelOffset] = colors[colorIndex][0];     /* R */
+            (*outImageData)[pixelOffset + 1] = colors[colorIndex][1]; /* G */
+            (*outImageData)[pixelOffset + 2] = colors[colorIndex][2]; /* B */
         }
     }
 }
 
-/* Log the test pattern color grid layout */
+/* Log a color grid layout of the test pattern for debugging */
 static void logTestPatternColorGrid(void)
 {
     /* Log a grid showing the color arrangement in the test pattern */
@@ -526,7 +714,8 @@ static void logTestPatternColorGrid(void)
 
 /* Process a PNG IDAT (image data) chunk */
 static BOOL processPNGImageDataChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE **outImageData, ULONG width, ULONG height,
-                                     ImgPalette *imgPalette, FILE *file, BOOL *foundIDAT, BOOL useTestPattern, PNGHeader *pngHeader)
+                                     ImgPalette *imgPalette, FILE *file, BOOL *foundIDAT, BOOL useTestPattern, PNGHeader *pngHeader,
+                                     UBYTE *transData, ULONG transSize, BOOL hasTrans)
 {
     char logMessage[256];
 
@@ -624,28 +813,151 @@ static BOOL processPNGImageDataChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE 
                         /* Convert unfiltered data to RGB format for output */
                         fileLoggerAddDebugEntry("Successfully applied PNG filters");
 
+                        /* Log transparency info if available */
+                        if (hasTrans && transData)
+                        {
+                            fileLoggerAddDebugEntry("Using transparency information from tRNS chunk");
+                        }
+
                         /* Convert to RGB format based on color type */
-                        /* For now, just handle RGB and RGBA, using test pattern for others */
                         switch (pngHeader->colorType)
                         {
                         case PNG_COLOR_TYPE_RGB:
-                            /* Direct copy for RGB data */
-                            memcpy(*outImageData, unfilteredData, width * height * 3);
+                            /* For RGB PNGs with transparency, check for single color transparency */
+                            if (hasTrans && transData && transSize >= 6)
+                            {
+                                /* tRNS for RGB defines a single transparent color (R,G,B) */
+                                UWORD transR = (transData[0] << 8) | transData[1];
+                                UWORD transG = (transData[2] << 8) | transData[3];
+                                UWORD transB = (transData[4] << 8) | transData[5];
+
+                                sprintf(logMessage, "Transparent RGB color: (%u,%u,%u)", transR, transG, transB);
+                                fileLoggerAddDebugEntry(logMessage);
+
+                                /* Compare each pixel and make transparent pixels black */
+                                for (ULONG i = 0; i < width * height; i++)
+                                {
+                                    UBYTE r = unfilteredData[i * 3];
+                                    UBYTE g = unfilteredData[i * 3 + 1];
+                                    UBYTE b = unfilteredData[i * 3 + 2];
+
+                                    /* Check if this pixel matches the transparent color */
+                                    if (r == (transR & 0xFF) && g == (transG & 0xFF) && b == (transB & 0xFF))
+                                    {
+                                        /* Make transparent pixels completely black as a marker */
+                                        (*outImageData)[i * 3] = 0;     /* R */
+                                        (*outImageData)[i * 3 + 1] = 0; /* G */
+                                        (*outImageData)[i * 3 + 2] = 0; /* B */
+
+                                        /* If we have a palette and it supports transparency */
+                                        if (imgPalette)
+                                        {
+                                            imgPalette->hasTransparency = TRUE;
+                                            imgPalette->transparentColor = 0; /* Using black as transparent */
+                                        }
+                                    }
+                                    else
+                                    {
+                                        /* Copy non-transparent pixels directly */
+                                        (*outImageData)[i * 3] = r;     /* R */
+                                        (*outImageData)[i * 3 + 1] = g; /* G */
+                                        (*outImageData)[i * 3 + 2] = b; /* B */
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                /* No transparency, direct copy for RGB data */
+                                memcpy(*outImageData, unfilteredData, width * height * 3);
+                            }
                             success = TRUE;
                             fileLoggerAddDebugEntry("Converted PNG RGB data to output format");
                             break;
 
                         case PNG_COLOR_TYPE_RGBA:
-                            /* Copy RGB components, skip alpha */
+                            /* For RGBA, use alpha channel for transparency */
+                            fileLoggerAddDebugEntry("Processing RGBA data with alpha channel");
+
+                            /* If we have a palette, we'll need to mark the transparent color */
+                            if (imgPalette)
+                            {
+                                imgPalette->hasTransparency = TRUE;
+                                imgPalette->transparentColor = 0; /* Using index 0 (black) for fully transparent pixels */
+                            }
+
                             for (ULONG i = 0; i < width * height; i++)
                             {
-                                (*outImageData)[i * 3] = unfilteredData[i * 4];         /* R */
-                                (*outImageData)[i * 3 + 1] = unfilteredData[i * 4 + 1]; /* G */
-                                (*outImageData)[i * 3 + 2] = unfilteredData[i * 4 + 2]; /* B */
-                                /* Alpha at unfilteredData[i * 4 + 3] is ignored */
+                                UBYTE r = unfilteredData[i * 4];
+                                UBYTE g = unfilteredData[i * 4 + 1];
+                                UBYTE b = unfilteredData[i * 4 + 2];
+                                UBYTE a = unfilteredData[i * 4 + 3];
+
+                                if (a < 128) /* If pixel is mostly transparent */
+                                {
+                                    /* Make transparent pixels black (will be treated as transparent) */
+                                    (*outImageData)[i * 3] = 0;     /* R */
+                                    (*outImageData)[i * 3 + 1] = 0; /* G */
+                                    (*outImageData)[i * 3 + 2] = 0; /* B */
+                                }
+                                else
+                                {
+                                    /* Copy RGB components for non-transparent pixels */
+                                    (*outImageData)[i * 3] = r;     /* R */
+                                    (*outImageData)[i * 3 + 1] = g; /* G */
+                                    (*outImageData)[i * 3 + 2] = b; /* B */
+                                }
                             }
                             success = TRUE;
-                            fileLoggerAddDebugEntry("Converted PNG RGBA data to RGB output format");
+                            fileLoggerAddDebugEntry("Converted PNG RGBA data to RGB output format with transparency");
+                            break;
+
+                        case PNG_COLOR_TYPE_PALETTE:
+                            /* For indexed color, use palette entries */
+                            if (imgPalette && imgPalette->colorRegs)
+                            {
+                                /* If we have transparency data for the palette */
+                                if (hasTrans && transData && transSize > 0)
+                                {
+                                    /* Set the first fully transparent color */
+                                    for (ULONG t = 0; t < transSize; t++)
+                                    {
+                                        if (transData[t] == 0) /* Fully transparent */
+                                        {
+                                            imgPalette->transparentColor = t;
+                                            imgPalette->hasTransparency = TRUE;
+                                            sprintf(logMessage, "Palette transparency: Index %lu is fully transparent", t);
+                                            fileLoggerAddDebugEntry(logMessage);
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                /* Convert indexed data to RGB using the palette */
+                                for (ULONG i = 0; i < width * height; i++)
+                                {
+                                    UBYTE index = unfilteredData[i];
+                                    if (index < imgPalette->numColors)
+                                    {
+                                        /* Get color from palette */
+                                        (*outImageData)[i * 3] = imgPalette->colorRegs[index * 3];         /* R */
+                                        (*outImageData)[i * 3 + 1] = imgPalette->colorRegs[index * 3 + 1]; /* G */
+                                        (*outImageData)[i * 3 + 2] = imgPalette->colorRegs[index * 3 + 2]; /* B */
+                                    }
+                                    else
+                                    {
+                                        /* Invalid index, use black */
+                                        (*outImageData)[i * 3] = 0;     /* R */
+                                        (*outImageData)[i * 3 + 1] = 0; /* G */
+                                        (*outImageData)[i * 3 + 2] = 0; /* B */
+                                    }
+                                }
+                                success = TRUE;
+                                fileLoggerAddDebugEntry("Converted indexed PNG data to RGB using palette");
+                            }
+                            else
+                            {
+                                fileLoggerAddDebugEntry("No palette available for indexed PNG");
+                            }
                             break;
 
                         default:
@@ -693,55 +1005,6 @@ static BOOL processPNGImageDataChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE 
             generateTestPattern(outImageData, width, height);
         }
     }
-
-    return TRUE;
-}
-
-/* Process a PNG PLTE (palette) chunk */
-static BOOL processPNGPaletteChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE **palette, ULONG *paletteSize, BOOL *hasPalette)
-{
-    char logMessage[256];
-
-    /* Validate parameters */
-    if (!chunkData || !palette || !paletteSize || !hasPalette)
-        return FALSE;
-
-    /* PNG palette entries must be RGB triplets */
-    if (chunkLength % 3 != 0)
-        return FALSE;
-
-    /* Store palette size */
-    *paletteSize = chunkLength;
-
-    /* Allocate memory for the palette data */
-    *palette = (UBYTE *)malloc(*paletteSize);
-    if (!*palette)
-        return FALSE;
-
-    /* Copy palette data */
-    memcpy(*palette, chunkData, *paletteSize);
-    *hasPalette = TRUE;
-
-    /* Log palette information */
-    sprintf(logMessage, "Found PLTE chunk with %lu colors", *paletteSize / 3);
-    fileLoggerAddDebugEntry(logMessage);
-
-    return TRUE;
-}
-
-/* Decode PNG header from IHDR chunk data */
-static BOOL decodePNGHeader(UBYTE *data, PNGHeader *header)
-{
-    if (!data || !header)
-        return FALSE;
-
-    header->width = (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
-    header->height = (data[4] << 24) | (data[5] << 16) | (data[6] << 8) | data[7];
-    header->bitDepth = data[8];
-    header->colorType = data[9];
-    header->compressionMethod = data[10];
-    header->filterMethod = data[11];
-    header->interlaceMethod = data[12];
 
     return TRUE;
 }

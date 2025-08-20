@@ -11,11 +11,13 @@
 /* Image palette structure */
 typedef struct
 {
-    ULONG numColors;   /* Number of colors in the palette */
-    UBYTE *colorRegs;  /* Raw color registers (RGB triplets - R,G,B,R,G,B,...) */
-    ULONG *colorTable; /* ARGB color values if available */
-    UBYTE penMap[256]; /* Mapping from source pens to system pens */
-    BOOL allocated;    /* Whether we allocated memory for colorRegs */
+    ULONG numColors;        /* Number of colors in the palette */
+    UBYTE *colorRegs;       /* Raw color registers (RGB triplets - R,G,B,R,G,B,...) */
+    ULONG *colorTable;      /* ARGB color values if available */
+    UBYTE penMap[256];      /* Mapping from source pens to system pens */
+    BOOL allocated;         /* Whether we allocated memory for colorRegs */
+    BOOL hasTransparency;   /* Whether palette has transparency */
+    UBYTE transparentColor; /* Index of transparent color in palette */
 } ImgPalette;
 
 /* Initialize a palette structure */

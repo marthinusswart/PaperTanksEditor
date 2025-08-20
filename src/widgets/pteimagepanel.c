@@ -953,6 +953,20 @@ void mDrawPNG(Object *obj, struct PTEImagePanelData *data)
                         (ULONG)data->imageData, data->imageWidth, data->imageHeight);
     fileLoggerAddEntry(logMessage);
 
+    // Log transparency information
+    if (data->imgPalette)
+    {
+        loggerFormatMessage(logMessage, "Image palette at: 0x%08lx, has transparency: %s, transparent color: %d",
+                            (ULONG)data->imgPalette,
+                            data->imgPalette->hasTransparency ? "YES" : "NO",
+                            data->imgPalette->transparentColor);
+        fileLoggerAddEntry(logMessage);
+    }
+    else
+    {
+        fileLoggerAddEntry("No palette information available for PNG");
+    }
+
     // Get RastPort
     rp = _rp(obj);
     if (!rp)
@@ -1050,6 +1064,15 @@ void mDrawPNG(Object *obj, struct PTEImagePanelData *data)
                     UBYTE g = data->imageData[offset + 1]; // G
                     UBYTE b = data->imageData[offset + 2]; // B
 
+                    // Skip drawing if this is a transparent pixel (all zeros in RGB components)
+                    // This is our marker for transparent pixels from the PNG processing
+                    if (data->imgPalette && data->imgPalette->hasTransparency &&
+                        r == 0 && g == 0 && b == 0)
+                    {
+                        // Skip drawing this pixel, leaving the background visible
+                        continue;
+                    }
+
                     // Convert 8-bit RGB to 32-bit RGB required by SetRGB32
                     ULONG r32 = ((ULONG)r << 24) | ((ULONG)r << 16) | ((ULONG)r << 8) | r;
                     ULONG g32 = ((ULONG)g << 24) | ((ULONG)g << 16) | ((ULONG)g << 8) | g;
@@ -1102,6 +1125,15 @@ void mDrawPNG(Object *obj, struct PTEImagePanelData *data)
                     UBYTE r = data->imageData[offset];     // R
                     UBYTE g = data->imageData[offset + 1]; // G
                     UBYTE b = data->imageData[offset + 2]; // B
+
+                    // Skip drawing if this is a transparent pixel (all zeros in RGB components)
+                    // This is our marker for transparent pixels from the PNG processing
+                    if (data->imgPalette && data->imgPalette->hasTransparency &&
+                        r == 0 && g == 0 && b == 0)
+                    {
+                        // Skip drawing this pixel, leaving the background visible
+                        continue;
+                    }
 
                     // Create a pen value suitable for SetAPen (depends on the platform)
                     // This is a fallback that may not work perfectly on all systems

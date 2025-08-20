@@ -15,6 +15,8 @@ void initImgPalette(ImgPalette *palette)
         palette->colorRegs = NULL;
         palette->colorTable = NULL;
         palette->allocated = FALSE;
+        palette->hasTransparency = FALSE;
+        palette->transparentColor = 0;
 
         /* Initialize pen mapping to identity (each pen maps to itself) */
         for (ULONG i = 0; i < 256; i++)

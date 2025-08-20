@@ -16,6 +16,7 @@
 #define PNG_CHUNK_PLTE 0x504C5445 /* "PLTE" */
 #define PNG_CHUNK_IDAT 0x49444154 /* "IDAT" */
 #define PNG_CHUNK_IEND 0x49454E44 /* "IEND" */
+#define PNG_CHUNK_TRNS 0x74524E53 /* "tRNS" */
 
 /* PNG color types */
 #define PNG_COLOR_TYPE_GRAYSCALE 0
