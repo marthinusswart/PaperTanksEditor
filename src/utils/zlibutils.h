@@ -36,10 +36,6 @@ BOOL processUncompressedBlock(BitBuffer *bitBuf, UBYTE *compressedData, ULONG co
 /* Process a dynamic Huffman (type 2) DEFLATE block */
 BOOL processSkipUnsupportedBlock(BitBuffer *bitBuf, BOOL isFinalBlock, const char *blockTypeName);
 
-/* Process a dynamic Huffman (type 2) DEFLATE block - actual implementation */
-BOOL processDynamicHuffmanBlock(BitBuffer *bitBuf, UBYTE *compressedData, ULONG compressedSize,
-                                UBYTE *outputBuffer, ULONG outputBufferSize, ULONG *outPos);
-
 /* Initialize a bit buffer for reading compressed data */
 void initBitBuffer(BitBuffer *buffer, UBYTE *data, ULONG size, ULONG startPos);
 

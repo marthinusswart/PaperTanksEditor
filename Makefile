@@ -34,14 +34,14 @@ LDFLAGS = -L/opt/vbcc/targets/m68k-amigaos/lib \
 
 # Source files
 MAIN_SOURCES = $(SRCDIR)/main.c
-UTILS_SOURCES = $(UTILSDIR)/filelogger.c $(UTILSDIR)/windowlogger.c $(UTILSDIR)/zlibutils.c
+UTILS_SOURCES = $(UTILSDIR)/filelogger.c $(UTILSDIR)/windowlogger.c $(UTILSDIR)/zlibutils.c $(UTILSDIR)/huffmanUtils.c
 VIEWS_SOURCES = $(VIEWSDIR)/aboutview.c
 WIDGETS_SOURCES = $(WIDGETSDIR)/pteimagepanel.c
 GRAPHICS_SOURCES = $(GRAPHICSDIR)/graphics.c $(GRAPHICSDIR)/imgpaletteutils.c $(GRAPHICSDIR)/imgpngutils.c
 
 # Object files
 MAIN_OBJECTS = $(OBJDIR)/main.o
-UTILS_OBJECTS = $(OBJDIR)/utils/filelogger.o $(OBJDIR)/utils/windowlogger.o $(OBJDIR)/utils/zlibutils.o
+UTILS_OBJECTS = $(OBJDIR)/utils/filelogger.o $(OBJDIR)/utils/windowlogger.o $(OBJDIR)/utils/zlibutils.o $(OBJDIR)/utils/huffmanUtils.o
 VIEWS_OBJECTS = $(OBJDIR)/views/aboutview.o
 WIDGETS_OBJECTS = $(OBJDIR)/widgets/pteimagepanel.o
 GRAPHICS_OBJECTS = $(OBJDIR)/graphics/graphics.o $(OBJDIR)/graphics/imgpaletteutils.o $(OBJDIR)/graphics/imgpngutils.o
