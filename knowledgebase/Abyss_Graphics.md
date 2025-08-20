@@ -1,3 +1,5 @@
+https://github.com/BartmanAbyss/vscode-amiga-debug
+
 amiga-debug Visual Studio Code Extension
 One-stop Visual Studio Code Extention to compile, debug and profile Amiga C/C++ programs compiled by the bundled gcc 15.1 with the bundled WinUAE/FS-UAE and GDB.
 
