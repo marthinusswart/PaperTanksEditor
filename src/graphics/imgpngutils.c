@@ -42,7 +42,7 @@ BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalet
     /* Input validation */
     if (!outImageData)
     {
-        fileLoggerAddEntry("loadPNGToBitmapObject: outImageData is NULL");
+        fileLoggerAddDebugEntry("loadPNGToBitmapObject: outImageData is NULL");
         return FALSE;
     }
 
@@ -56,19 +56,19 @@ BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalet
     if (!file)
     {
         sprintf(logMessage, "Failed to open PNG file: %s", filename);
-        fileLoggerAddEntry(logMessage);
+        fileLoggerAddDebugEntry(logMessage);
         return FALSE;
     }
 
     /* Check PNG signature */
     if (!validatePNGSignature(file))
     {
-        fileLoggerAddEntry("Invalid PNG signature");
+        fileLoggerAddDebugEntry("Invalid PNG signature");
         fclose(file);
         return FALSE;
     }
 
-    fileLoggerAddEntry("PNG signature validated");
+    fileLoggerAddDebugEntry("PNG signature validated");
 
     /* Allocate and initialize palette if requested */
     ImgPalette *imgPalette = NULL;
@@ -77,7 +77,7 @@ BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalet
         imgPalette = (ImgPalette *)malloc(sizeof(ImgPalette));
         if (!imgPalette)
         {
-            fileLoggerAddEntry("Failed to allocate memory for palette structure");
+            fileLoggerAddDebugEntry("Failed to allocate memory for palette structure");
             fclose(file);
             return FALSE;
         }
@@ -103,31 +103,31 @@ BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalet
 
                 sprintf(logMessage, "PNG Header info: %lux%lu pixels, bitDepth: %u, colorType: %u",
                         width, height, pngHeader.bitDepth, pngHeader.colorType);
-                fileLoggerAddEntry(logMessage);
+                fileLoggerAddDebugEntry(logMessage);
 
                 /* Use the actual width and height from the PNG */
                 if (width > 0 && height > 0)
                 {
-                    fileLoggerAddEntry("Using actual PNG dimensions");
+                    fileLoggerAddDebugEntry("Using actual PNG dimensions");
 
                     // Determine bytes per pixel based on color type
                     switch (pngHeader.colorType)
                     {
                     case PNG_COLOR_TYPE_RGB:
                         bytesPerPixel = 3; // RGB
-                        fileLoggerAddEntry("PNG uses RGB color format (3 bytes per pixel)");
+                        fileLoggerAddDebugEntry("PNG uses RGB color format (3 bytes per pixel)");
                         break;
                     case PNG_COLOR_TYPE_RGBA:
                         bytesPerPixel = 4; // RGBA
-                        fileLoggerAddEntry("PNG uses RGBA color format (4 bytes per pixel)");
+                        fileLoggerAddDebugEntry("PNG uses RGBA color format (4 bytes per pixel)");
                         break;
                     case PNG_COLOR_TYPE_PALETTE:
                         bytesPerPixel = 1; // Indexed
                         isIndexed = TRUE;
-                        fileLoggerAddEntry("PNG uses palette color format (1 byte per pixel)");
+                        fileLoggerAddDebugEntry("PNG uses palette color format (1 byte per pixel)");
                         break;
                     default:
-                        fileLoggerAddEntry("Unsupported PNG color type, defaulting to RGB");
+                        fileLoggerAddDebugEntry("Unsupported PNG color type, defaulting to RGB");
                         bytesPerPixel = 3;
                         break;
                     }
@@ -138,13 +138,13 @@ BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalet
                     width = 64;
                     height = 64;
                     bytesPerPixel = 3;
-                    fileLoggerAddEntry("Invalid dimensions, using default 64x64");
+                    fileLoggerAddDebugEntry("Invalid dimensions, using default 64x64");
                 }
             }
         }
         else
         {
-            fileLoggerAddEntry("First chunk is not IHDR or has wrong size");
+            fileLoggerAddDebugEntry("First chunk is not IHDR or has wrong size");
             /* Fallback to default size */
             width = 64;
             height = 64;
@@ -155,7 +155,7 @@ BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalet
     }
     else
     {
-        fileLoggerAddEntry("Failed to read IHDR chunk");
+        fileLoggerAddDebugEntry("Failed to read IHDR chunk");
         /* Fallback to default size */
         width = 64;
         height = 64;
@@ -166,7 +166,7 @@ BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalet
     *outImageData = (UBYTE *)malloc(width * height * 3); // Always use 3 bytes per pixel for output
     if (!*outImageData)
     {
-        fileLoggerAddEntry("Failed to allocate memory for image data");
+        fileLoggerAddDebugEntry("Failed to allocate memory for image data");
         if (imgPalette)
             freeImgPalette(imgPalette);
         fclose(file);
@@ -208,7 +208,7 @@ BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalet
 
         case PNG_CHUNK_IEND:
             /* End of PNG file */
-            fileLoggerAddEntry("Found IEND chunk - end of PNG file");
+            fileLoggerAddDebugEntry("Found IEND chunk - end of PNG file");
             break;
 
         default:
@@ -278,12 +278,12 @@ BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalet
 
     if (foundIDAT)
     {
-        fileLoggerAddEntry("Successfully generated RGB data from PNG");
+        fileLoggerAddDebugEntry("Successfully generated RGB data from PNG");
         success = TRUE;
     }
     else
     {
-        fileLoggerAddEntry("No IDAT chunks found in PNG file");
+        fileLoggerAddDebugEntry("No IDAT chunks found in PNG file");
         success = FALSE;
 
         /* Free allocated memory if we failed */
@@ -499,28 +499,28 @@ static void generateTestPattern(UBYTE **outImageData, ULONG width, ULONG height)
 static void logTestPatternColorGrid(void)
 {
     /* Log a grid showing the color arrangement in the test pattern */
-    fileLoggerAddEntry("Test Pattern Color Grid Layout (4x4):");
-    fileLoggerAddEntry("+---------+---------+---------+---------+");
-    fileLoggerAddEntry("| Red     | Green   | Blue    | Yellow  |");
-    fileLoggerAddEntry("+---------+---------+---------+---------+");
-    fileLoggerAddEntry("| Orange  | Purple  | Cyan    | Magenta |");
-    fileLoggerAddEntry("+---------+---------+---------+---------+");
-    fileLoggerAddEntry("| Brown   | Pink    | Gray    | Lime    |");
-    fileLoggerAddEntry("+---------+---------+---------+---------+");
-    fileLoggerAddEntry("| Teal    | Gold    | White   | Black   |");
-    fileLoggerAddEntry("+---------+---------+---------+---------+");
+    fileLoggerAddDebugEntry("Test Pattern Color Grid Layout (4x4):");
+    fileLoggerAddDebugEntry("+---------+---------+---------+---------+");
+    fileLoggerAddDebugEntry("| Red     | Green   | Blue    | Yellow  |");
+    fileLoggerAddDebugEntry("+---------+---------+---------+---------+");
+    fileLoggerAddDebugEntry("| Orange  | Purple  | Cyan    | Magenta |");
+    fileLoggerAddDebugEntry("+---------+---------+---------+---------+");
+    fileLoggerAddDebugEntry("| Brown   | Pink    | Gray    | Lime    |");
+    fileLoggerAddDebugEntry("+---------+---------+---------+---------+");
+    fileLoggerAddDebugEntry("| Teal    | Gold    | White   | Black   |");
+    fileLoggerAddDebugEntry("+---------+---------+---------+---------+");
 
     /* Also log a compact version with abbreviated color names */
-    fileLoggerAddEntry("Compact color grid with abbreviated names:");
-    fileLoggerAddEntry("+------+------+------+------+");
-    fileLoggerAddEntry("| Red  | Grn  | Blu  | Yel  |");
-    fileLoggerAddEntry("+------+------+------+------+");
-    fileLoggerAddEntry("| Org  | Pur  | Cyn  | Mag  |");
-    fileLoggerAddEntry("+------+------+------+------+");
-    fileLoggerAddEntry("| Brn  | Pnk  | Gry  | Lim  |");
-    fileLoggerAddEntry("+------+------+------+------+");
-    fileLoggerAddEntry("| Teal | Gold | Wht  | Blk  |");
-    fileLoggerAddEntry("+------+------+------+------+");
+    fileLoggerAddDebugEntry("Compact color grid with abbreviated names:");
+    fileLoggerAddDebugEntry("+------+------+------+------+");
+    fileLoggerAddDebugEntry("| Red  | Grn  | Blu  | Yel  |");
+    fileLoggerAddDebugEntry("+------+------+------+------+");
+    fileLoggerAddDebugEntry("| Org  | Pur  | Cyn  | Mag  |");
+    fileLoggerAddDebugEntry("+------+------+------+------+");
+    fileLoggerAddDebugEntry("| Brn  | Pnk  | Gry  | Lim  |");
+    fileLoggerAddDebugEntry("+------+------+------+------+");
+    fileLoggerAddDebugEntry("| Teal | Gold | Wht  | Blk  |");
+    fileLoggerAddDebugEntry("+------+------+------+------+");
 }
 
 /* Process a PNG IDAT (image data) chunk */
@@ -542,7 +542,7 @@ static BOOL processPNGImageDataChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE 
         *outImageData = (UBYTE *)malloc(width * height * 3);
         if (!*outImageData)
         {
-            fileLoggerAddEntry("Failed to allocate memory for image data");
+            fileLoggerAddDebugEntry("Failed to allocate memory for image data");
             if (imgPalette)
                 freeImgPalette(imgPalette);
             if (file)
@@ -555,18 +555,18 @@ static BOOL processPNGImageDataChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE 
     {
         /* In test pattern mode, generate a color test pattern instead of
            decompressing actual PNG data */
-        fileLoggerAddEntry("Using test pattern mode for PNG rendering");
+        fileLoggerAddDebugEntry("Using test pattern mode for PNG rendering");
         generateTestPattern(outImageData, width, height);
 
         /* Log the color grid layout */
         logTestPatternColorGrid();
 
-        fileLoggerAddEntry("Generated test pattern as fallback for PNG data");
+        fileLoggerAddDebugEntry("Generated test pattern as fallback for PNG data");
     }
     else
     {
         /* In normal mode, try to decompress and process the actual PNG data */
-        fileLoggerAddEntry("Found IDAT chunk - attempting to process actual PNG data");
+        fileLoggerAddDebugEntry("Found IDAT chunk - attempting to process actual PNG data");
 
         /* Step 1: Decompress the zlib-compressed data */
         UBYTE *decompressedData = NULL;
@@ -576,14 +576,14 @@ static BOOL processPNGImageDataChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE 
         {
             /* Step 2: Apply PNG filters and convert to RGB */
             sprintf(logMessage, "Successfully decompressed %lu bytes of PNG data", decompressedSize);
-            fileLoggerAddEntry(logMessage);
+            fileLoggerAddDebugEntry(logMessage);
 
             /* TODO: Apply PNG filters (Sub, Up, Average, Paeth)
                and convert to RGB format based on color type */
 
             /* For now, since we don't have full filter processing,
                still use the test pattern but log our progress */
-            fileLoggerAddEntry("Note: PNG filter processing not yet implemented");
+            fileLoggerAddDebugEntry("Note: PNG filter processing not yet implemented");
             generateTestPattern(outImageData, width, height);
 
             /* Free decompressed data when done */
@@ -595,7 +595,7 @@ static BOOL processPNGImageDataChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE 
         else
         {
             /* Decompression failed, fall back to test pattern */
-            fileLoggerAddEntry("PNG decompression failed, using test pattern instead");
+            fileLoggerAddDebugEntry("PNG decompression failed, using test pattern instead");
             generateTestPattern(outImageData, width, height);
         }
     }
@@ -630,7 +630,7 @@ static BOOL processPNGPaletteChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE **
 
     /* Log palette information */
     sprintf(logMessage, "Found PLTE chunk with %lu colors", *paletteSize / 3);
-    fileLoggerAddEntry(logMessage);
+    fileLoggerAddDebugEntry(logMessage);
 
     return TRUE;
 }
