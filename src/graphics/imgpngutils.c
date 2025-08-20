@@ -508,7 +508,7 @@ static void logTestPatternColorGrid(void)
     fileLoggerAddEntry("+---------+---------+---------+---------+");
     fileLoggerAddEntry("| Teal    | Gold    | White   | Black   |");
     fileLoggerAddEntry("+---------+---------+---------+---------+");
-    
+
     /* Also log a compact version with abbreviated color names */
     fileLoggerAddEntry("Compact color grid with abbreviated names:");
     fileLoggerAddEntry("+------+------+------+------+");
@@ -524,7 +524,7 @@ static void logTestPatternColorGrid(void)
 
 /* Process a PNG IDAT (image data) chunk */
 static BOOL processPNGImageDataChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE **outImageData, ULONG width, ULONG height,
-                                     ImgPalette *imgPalette, FILE *file, BOOL *foundIDAT)
+                                     ImgPalette *imgPalette, FILE *file, BOOL *foundIDAT, BOOL useTestPattern)
 {
     /* Validate parameters */
     if (!chunkData || !outImageData || !foundIDAT || width <= 0 || height <= 0)
@@ -532,7 +532,6 @@ static BOOL processPNGImageDataChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE 
 
     /* Set the found flag so we know we encountered an IDAT chunk */
     *foundIDAT = TRUE;
-    fileLoggerAddEntry("Found IDAT chunk - using PNG data for direct 24-bit RGB drawing");
 
     /* Make sure we have memory allocated for the 24-bit RGB output image */
     if (*outImageData == NULL)
@@ -549,13 +548,34 @@ static BOOL processPNGImageDataChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE 
         }
     }
 
-    /* Generate a test pattern instead of decompressing actual PNG data */
-    generateTestPattern(outImageData, width, height);
-    
-    /* Log the color grid layout */
-    logTestPatternColorGrid();
-    
-    fileLoggerAddEntry("Generated test pattern as fallback for PNG data");
+    if (useTestPattern)
+    {
+        /* In test pattern mode, generate a color test pattern instead of
+           decompressing actual PNG data */
+        fileLoggerAddEntry("Using test pattern mode for PNG rendering");
+        generateTestPattern(outImageData, width, height);
+
+        /* Log the color grid layout */
+        logTestPatternColorGrid();
+
+        fileLoggerAddEntry("Generated test pattern as fallback for PNG data");
+    }
+    else
+    {
+        /* In normal mode, try to decompress and process the actual PNG data */
+        fileLoggerAddEntry("Found IDAT chunk - attempting to process actual PNG data");
+
+        /* TODO: Add real PNG decompression code here.
+           This would involve:
+           1. Inflate/decompress the zlib-compressed data
+           2. Apply PNG filters
+           3. Convert to RGB format based on color type
+
+           For now we'll still use the test pattern as we don't have the full
+           PNG decompression implementation */
+        fileLoggerAddEntry("Warning: Full PNG decompression not implemented yet");
+        generateTestPattern(outImageData, width, height);
+    }
 
     return TRUE;
 }
