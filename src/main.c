@@ -95,8 +95,14 @@ int main(void)
     UBYTE *pngImageData = NULL;
     ImgPalette *pngPalette = NULL;
     BOOL pngLoaded = loadPNGToBitmapObject("PROGDIR:assets/ui/tank.png", &pngImageData, &pngPalette);
-    // BOOL pngLoaded = loadPNGToBitmapObject("PROGDIR:assets/tank.png", &pngImageData, &pngPalette);
-    if (pngLoaded)
+
+    /* PNG Test 2 */
+    fileLoggerAddEntry("Testing PNG loading capability...");
+    UBYTE *pngImageData2 = NULL;
+    ImgPalette *pngPalette2 = NULL;
+    BOOL pngLoaded2 = loadPNGToBitmapObject("PROGDIR:assets/tank2.png", &pngImageData2, &pngPalette2);
+
+    if (pngLoaded && pngLoaded2)
     {
         fileLoggerAddDebugEntry("PNG image loaded successfully");
         // We'll use this PNG data in our PTEImagePanel
@@ -114,6 +120,16 @@ int main(void)
         {
             freeImgPalette(pngPalette);
             pngPalette = NULL;
+        }
+        if (pngImageData2)
+        {
+            free(pngImageData2);
+            pngImageData2 = NULL;
+        }
+        if (pngPalette2)
+        {
+            freeImgPalette(pngPalette2);
+            pngPalette2 = NULL;
         }
     }
 
@@ -141,19 +157,19 @@ int main(void)
                     Child, VGroup,
                         Child, RectangleObject, MUIA_Width, 100, MUIA_Height, 50, MUIA_Background, MUII_ButtonBack, MUIA_Frame, "box", End, 
                         // Create the custom object with attributes in MUI style                                               
-                        /*Child, PTEImagePanelObject,  
+                        Child, PTEImagePanelObject,  
                             MUIA_Width, 100,
                             MUIA_Height, 50,
                             MUIA_Background, MUII_ButtonBack,
                             PTEA_BorderColor, 1,
                             PTEA_BorderMargin, 1,
                             PTEA_DrawBorder, TRUE,
-                            PTEA_ImageData, pngImageData,
-                            PTEA_ImageHeight, 100,
-                            PTEA_ImageWidth, 100,
-                            PTEA_ImgPalette, pngPalette,
+                            PTEA_ImageData, pngImageData2,
+                            PTEA_ImageHeight, 145,
+                            PTEA_ImageWidth, 200,
+                            PTEA_ImgPalette, pngPalette2,
                             PTEA_IsPNG, TRUE,
-                        End,*/
+                        End,
                     End,
 
                     Child, VGroup, GroupFrameT("Status Messages"),                    
@@ -212,6 +228,16 @@ int main(void)
         free(pngImageData);
     if (pngPalette)
         freeImgPalette(pngPalette);
+    if (pngImageData2)
+    {
+        free(pngImageData2);
+        pngImageData2 = NULL;
+    }
+    if (pngPalette2)
+    {
+        freeImgPalette(pngPalette2);
+        pngPalette2 = NULL;
+    }
 
     cleanup_libs();
 

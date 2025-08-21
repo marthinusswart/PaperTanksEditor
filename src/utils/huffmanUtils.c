@@ -98,13 +98,11 @@ BOOL processDynamicHuffmanBlock(BitBuffer *bitBuf, UBYTE *compressedData, ULONG 
         codeLengths[codelenCodeOrder[i]] = bitValue;
     }
 
-    fileLoggerAddDebugEntry("Read code length codes");
-
     /* Build the Huffman tree for the code length alphabet */
     HuffmanTable codeLengthTable;
     if (!buildHuffmanTreeFromCodeLengths(codeLengths, MAX_CODE_LENGTHS, &codeLengthTable))
     {
-        fileLoggerAddDebugEntry("Failed to build Huffman tree for code lengths");
+        fileLoggerAddErrorEntry("Failed to build Huffman tree for code lengths");
         return FALSE;
     }
 
@@ -117,7 +115,7 @@ BOOL processDynamicHuffmanBlock(BitBuffer *bitBuf, UBYTE *compressedData, ULONG 
     {
         if (!decodeHuffmanValue(bitBuf, &codeLengthTable, &decodedValue))
         {
-            fileLoggerAddDebugEntry("Error decoding literal/length code length");
+            fileLoggerAddErrorEntry("Error decoding literal/length code length");
             freeHuffmanTable(&codeLengthTable);
             return FALSE;
         }
@@ -181,7 +179,7 @@ BOOL processDynamicHuffmanBlock(BitBuffer *bitBuf, UBYTE *compressedData, ULONG 
     {
         if (!decodeHuffmanValue(bitBuf, &codeLengthTable, &decodedValue))
         {
-            fileLoggerAddDebugEntry("Error decoding distance code length");
+            fileLoggerAddErrorEntry("Error decoding distance code length");
             freeHuffmanTable(&codeLengthTable);
             return FALSE;
         }
@@ -239,21 +237,19 @@ BOOL processDynamicHuffmanBlock(BitBuffer *bitBuf, UBYTE *compressedData, ULONG 
         }
     }
 
-    fileLoggerAddDebugEntry("Decoded literal/length and distance code lengths");
-
     /* Build Huffman trees for literals/lengths and distances */
     HuffmanTable literalTable, distanceTable;
 
     if (!buildHuffmanTreeFromCodeLengths(literalLengths, hlit, &literalTable))
     {
-        fileLoggerAddDebugEntry("Failed to build Huffman tree for literals/lengths");
+        fileLoggerAddErrorEntry("Failed to build Huffman tree for literals/lengths");
         freeHuffmanTable(&codeLengthTable);
         return FALSE;
     }
 
     if (!buildHuffmanTreeFromCodeLengths(distanceLengths, hdist, &distanceTable))
     {
-        fileLoggerAddDebugEntry("Failed to build Huffman tree for distances");
+        fileLoggerAddErrorEntry("Failed to build Huffman tree for distances");
         freeHuffmanTable(&codeLengthTable);
         freeHuffmanTable(&literalTable);
         return FALSE;
@@ -264,14 +260,12 @@ BOOL processDynamicHuffmanBlock(BitBuffer *bitBuf, UBYTE *compressedData, ULONG 
     /* Use these trees to decode the actual compressed data (literals and length/distance pairs) */
     if (!decodeLZ77Data(bitBuf, &literalTable, &distanceTable, outputBuffer, outputBufferSize, outPos))
     {
-        fileLoggerAddDebugEntry("Failed to decode LZ77 compressed data");
+        fileLoggerAddErrorEntry("Failed to decode LZ77 compressed data");
         freeHuffmanTable(&codeLengthTable);
         freeHuffmanTable(&literalTable);
         freeHuffmanTable(&distanceTable);
         return FALSE;
     }
-
-    fileLoggerAddDebugEntry("Successfully decoded LZ77 compressed data");
 
     /* Clean up */
     freeHuffmanTable(&codeLengthTable);
@@ -394,7 +388,7 @@ BOOL decodeHuffmanValue(BitBuffer *bitBuf, HuffmanTable *table, UWORD *value)
         /* Get next bit */
         if (!readBits(bitBuf, 1, &bit))
         {
-            fileLoggerAddDebugEntry("Failed to read bit from buffer");
+            fileLoggerAddErrorEntry("Failed to read bit from buffer");
             return FALSE;
         }
 
@@ -512,7 +506,7 @@ BOOL decodeLZ77Data(BitBuffer *bitBuf, HuffmanTable *literalTable, HuffmanTable 
             /* Decode the distance code */
             if (!decodeHuffmanValue(bitBuf, distanceTable, &code))
             {
-                fileLoggerAddDebugEntry("Failed to decode distance value");
+                fileLoggerAddErrorEntry("Failed to decode distance value");
                 return FALSE;
             }
 
@@ -520,7 +514,7 @@ BOOL decodeLZ77Data(BitBuffer *bitBuf, HuffmanTable *literalTable, HuffmanTable 
             if (code >= 30)
             {
                 sprintf(logMessage, "Invalid distance code: %u", code);
-                fileLoggerAddDebugEntry(logMessage);
+                fileLoggerAddErrorEntry(logMessage);
                 return FALSE;
             }
 
@@ -537,7 +531,7 @@ BOOL decodeLZ77Data(BitBuffer *bitBuf, HuffmanTable *literalTable, HuffmanTable 
                 {
                     if (!readBits(bitBuf, 1, &extraBitsValue))
                     {
-                        fileLoggerAddDebugEntry("Failed to read distance extra bits");
+                        fileLoggerAddErrorEntry("Failed to read distance extra bits");
                         return FALSE;
                     }
                     distance += extraBitsValue << i;
@@ -547,7 +541,7 @@ BOOL decodeLZ77Data(BitBuffer *bitBuf, HuffmanTable *literalTable, HuffmanTable 
             /* Validate the backreference */
             if (distance > *outPos)
             {
-                fileLoggerAddDebugEntry("Invalid backreference: distance larger than output position");
+                fileLoggerAddErrorEntry("Invalid backreference: distance larger than output position");
                 return FALSE;
             }
 
@@ -556,7 +550,7 @@ BOOL decodeLZ77Data(BitBuffer *bitBuf, HuffmanTable *literalTable, HuffmanTable 
                 char sizeMessage[256];
                 sprintf(sizeMessage, "Output buffer overflow when copying backreference: outPos=%lu, length=%lu, buffer size=%lu",
                         *outPos, length, outputBufferSize);
-                fileLoggerAddDebugEntry(sizeMessage);
+                fileLoggerAddErrorEntry(sizeMessage);
                 return FALSE;
             }
 
@@ -571,7 +565,7 @@ BOOL decodeLZ77Data(BitBuffer *bitBuf, HuffmanTable *literalTable, HuffmanTable 
         {
             /* Invalid code (codes 286-287 are reserved) */
             sprintf(logMessage, "Invalid literal/length code: %u", code);
-            fileLoggerAddDebugEntry(logMessage);
+            fileLoggerAddErrorEntry(logMessage);
             return FALSE;
         }
     }

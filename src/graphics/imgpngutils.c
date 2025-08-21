@@ -986,19 +986,19 @@ static BOOL processPNGImageDataChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE 
                             }
                             else
                             {
-                                fileLoggerAddDebugEntry("No palette available for indexed PNG");
+                                fileLoggerAddErrorEntry("No palette available for indexed PNG");
                             }
                             break;
 
                         default:
                             /* Other color types not yet implemented */
-                            fileLoggerAddDebugEntry("Unsupported PNG color type for conversion");
+                            fileLoggerAddErrorEntry("Unsupported PNG color type for conversion");
                             break;
                         }
                     }
                     else
                     {
-                        fileLoggerAddDebugEntry("PNG filter processing failed");
+                        fileLoggerAddErrorEntry("PNG filter processing failed");
                     }
 
                     /* Free unfiltered data */
@@ -1006,12 +1006,12 @@ static BOOL processPNGImageDataChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE 
                 }
                 else
                 {
-                    fileLoggerAddDebugEntry("Failed to allocate memory for unfiltered data");
+                    fileLoggerAddErrorEntry("Failed to allocate memory for unfiltered data");
                 }
             }
             else
             {
-                fileLoggerAddDebugEntry("Invalid bytes per pixel value for PNG format");
+                fileLoggerAddErrorEntry("Invalid bytes per pixel value for PNG format");
             }
 
             /* Free decompressed data */
@@ -1025,13 +1025,13 @@ static BOOL processPNGImageDataChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE 
             }
 
             /* Fall back to test pattern if processing failed */
-            fileLoggerAddDebugEntry("PNG processing failed, using test pattern as fallback");
+            fileLoggerAddErrorEntry("PNG processing failed, using test pattern as fallback");
             generateTestPattern(outImageData, width, height);
         }
         else
         {
             /* Decompression failed, fall back to test pattern */
-            fileLoggerAddDebugEntry("PNG decompression failed, using test pattern instead");
+            fileLoggerAddErrorEntry("PNG decompression failed, using test pattern instead");
             generateTestPattern(outImageData, width, height);
         }
     }

@@ -116,7 +116,10 @@ BOOL readBits(BitBuffer *buffer, UBYTE numBits, UBYTE *value)
 
     /* Make sure we don't read past the end of the buffer */
     if (buffer->pos >= buffer->size || !value)
+    {
+        fileLoggerAddErrorEntry("readBits: Buffer overrun or invalid value pointer");
         return FALSE;
+    }
 
     /* Read bits one at a time */
     while (bitsRead < numBits)
@@ -140,7 +143,10 @@ BOOL readBits(BitBuffer *buffer, UBYTE numBits, UBYTE *value)
 
             /* Check if we've reached the end of the buffer */
             if (buffer->pos >= buffer->size && bitsRead < numBits)
+            {
+                fileLoggerAddErrorEntry("readBits: Not enough bits available in buffer");
                 return FALSE; /* Not enough bits available */
+            }
         }
     }
 
@@ -169,7 +175,7 @@ BOOL processZlibHeader(UBYTE *compressedData, ULONG compressedSize, UBYTE *compr
     if (!compressedData || compressedSize < 2 || !compressionMethod || !compressionInfo ||
         !fCheck || !hasDictionary || !compressionLevel)
     {
-        fileLoggerAddDebugEntry("Invalid parameters for processZlibHeader");
+        fileLoggerAddErrorEntry("Invalid parameters for processZlibHeader");
         return FALSE;
     }
 
@@ -190,7 +196,7 @@ BOOL processZlibHeader(UBYTE *compressedData, ULONG compressedSize, UBYTE *compr
     {
         sprintf(logMessage, "Unsupported compression method: %i (expected 8 for DEFLATE)",
                 (int)*compressionMethod);
-        fileLoggerAddDebugEntry(logMessage);
+        fileLoggerAddErrorEntry(logMessage);
         return FALSE;
     }
 
@@ -198,7 +204,7 @@ BOOL processZlibHeader(UBYTE *compressedData, ULONG compressedSize, UBYTE *compr
     if (*compressionInfo > 7)
     {
         sprintf(logMessage, "Invalid compression info (window size): %d", (int)*compressionInfo);
-        fileLoggerAddDebugEntry(logMessage);
+        fileLoggerAddErrorEntry(logMessage);
         return FALSE;
     }
 
@@ -206,10 +212,8 @@ BOOL processZlibHeader(UBYTE *compressedData, ULONG compressedSize, UBYTE *compr
     ULONG checksum = cmf * 256 + flg;
     if (checksum % 31 != 0)
     {
-        sprintf(logMessage, "Invalid zlib header checksum: %lu is not divisible by 31",
-                checksum);
-        fileLoggerAddDebugEntry(logMessage);
-        sprintf(logMessage, "Invalid zlib header checksum: %lu is not divisible by 31", (unsigned long)checksum);
+        sprintf(logMessage, "Invalid zlib header checksum: %lu is not divisible by 31", checksum);
+        fileLoggerAddErrorEntry(logMessage);
         return FALSE;
     }
 
@@ -228,14 +232,6 @@ BOOL processZlibHeader(UBYTE *compressedData, ULONG compressedSize, UBYTE *compr
 
     return TRUE;
 }
-
-/* SIMPLIFIED IMPLEMENTATION - In a real system we would:
- * 1. Process zlib header (CMF, FLG) - DONE
- * 2. Process deflate blocks (using Huffman decoding)
- * 3. Verify the Adler-32 checksum at the end
- *
- * For this proof of concept, we'll just do minimal processing
- * and return an empty buffer with a success status */
 
 /* Constants for DEFLATE decompression */
 #define BLOCK_TYPE_NONE 0    /* No compression */
@@ -340,7 +336,7 @@ BOOL decompressZlibData(UBYTE *compressedData, ULONG compressedSize, UBYTE **dec
     if (!processZlibHeader(compressedData, compressedSize, &compressionMethod, &compressionInfo,
                            &fCheck, &hasDictionary, &compressionLevel))
     {
-        fileLoggerAddDebugEntry("Failed to process zlib header");
+        fileLoggerAddErrorEntry("Failed to process zlib header");
         return FALSE;
     }
 
@@ -351,11 +347,9 @@ BOOL decompressZlibData(UBYTE *compressedData, ULONG compressedSize, UBYTE **dec
     *decompressedData = (UBYTE *)malloc(estimatedSize);
     if (!*decompressedData)
     {
-        fileLoggerAddDebugEntry("Failed to allocate memory for decompressed data");
+        fileLoggerAddErrorEntry("Failed to allocate memory for decompressed data");
         return FALSE;
     }
-
-    fileLoggerAddDebugEntry("Starting simple zlib decompression");
 
     /* Skip zlib header (2 bytes) and initialize some data */
     ULONG srcPos = 2;
@@ -392,7 +386,6 @@ BOOL decompressZlibData(UBYTE *compressedData, ULONG compressedSize, UBYTE **dec
         return FALSE;
     }
 
-    // fileLoggerAddDebugEntry("Adler-32 checksum verification successful");
     return TRUE;
 }
 
