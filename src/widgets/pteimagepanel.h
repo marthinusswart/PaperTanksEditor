@@ -1,5 +1,28 @@
 #ifndef PTEIMAGEPANEL_H
 #define PTEIMAGEPANEL_H
+/**
+ * @file pteimagepanel.h
+ * @brief Header for the PTEImagePanel MUI custom class for AmigaOS.
+ *
+ * This module provides the interface and data structures for the PTEImagePanel,
+ * a custom MUI class designed to display 24-bit PNG images and other image formats
+ * in an AmigaOS GUI application. It supports drawing borders, handling transparency,
+ * and direct rendering to the screen using Amiga graphics APIs.
+ *
+ * Features:
+ *   - Custom MUI class creation and dispatcher
+ *   - Image data and palette management
+ *   - Border drawing and margin support
+ *   - PNG transparency handling
+ *   - Logging via filelogger and windowlogger
+ *   - Utility macros for Amiga/MUI compatibility
+ *
+ * See pteimagepanel.c for implementation details, including:
+ *   - Class instantiation and attribute parsing
+ *   - Drawing logic for images and borders
+ *   - Transparency and palette support
+ *   - Integration with AmigaOS graphics and MUI APIs
+ */
 
 /*** Include stuff ***/
 

@@ -27,7 +27,7 @@ void initImgPalette(ImgPalette *palette);
 /* Free resources allocated for a palette */
 void freeImgPalette(ImgPalette *palette);
 
-#endif /* GRAPHICS_COMMON_H */
-
 /* Find the MUI window object for a given MUI object */
 Object *getWindowObject(Object *obj);
+
+#endif /* GRAPHICS_COMMON_H */
