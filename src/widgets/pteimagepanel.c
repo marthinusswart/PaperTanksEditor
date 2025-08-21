@@ -64,8 +64,8 @@ IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg)
 
     // Default values
     BYTE borderColor = 1; // Black
-    WORD borderMargin = 10;
-    BOOL drawBorder = TRUE;
+    WORD borderMargin = 0;
+    BOOL drawBorder = FALSE;
     UBYTE *imageData = NULL;
     WORD imageHeight = 0;
     WORD imageWidth = 0;
