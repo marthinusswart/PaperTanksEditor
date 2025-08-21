@@ -12,7 +12,7 @@ IPTR SAVEDS mDraw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg);
 void mDrawBorder(Object *obj, struct PTEImagePanelData *data);
 void mDrawRGB2(Object *obj, struct PTEImagePanelData *data);
 void mDrawRGB3(Object *obj, struct PTEImagePanelData *data);
-void mDrawPNG(Object *obj, struct PTEImagePanelData *data);
+void mDrawToScreen(Object *obj, struct PTEImagePanelData *data);
 LONG xget(Object *obj, ULONG attribute);
 Object *getWindowObject(Object *obj);
 
@@ -177,211 +177,6 @@ void mDrawBorder(Object *obj, struct PTEImagePanelData *data)
     Draw(rp, left, top); // Close the loop
 }
 
-// Function to draw RGB image data for the PTEImagePanel
-void mDrawRGB(Object *obj, struct PTEImagePanelData *data)
-{
-    struct RastPort *rp;
-    WORD left, top, right, bottom;
-    char logMessage[256];
-
-// Amiga hardware has limited color palette
-#define MAX_COLORS 16 // Use 16 pens (excluding pen 0 which is often the background)
-    UBYTE redValues[MAX_COLORS];
-    UBYTE greenValues[MAX_COLORS];
-    UBYTE blueValues[MAX_COLORS];
-    BOOL colorUsed[MAX_COLORS];
-    UBYTE colorCount = 0;
-
-    // Two-pass approach: first identify all unique colors, then draw
-    UBYTE colorMap[16][16][16]; // Maps 4-bit RGB to pen numbers
-
-    // Get the ViewPort once outside the pixel loop
-    struct ViewPort *vp = NULL;
-    struct Screen *scr = NULL;
-
-    loggerFormatMessage(logMessage, "PTEImagePanel: we have RGB image data at: 0x%08lx", (ULONG)data->imageData);
-    fileLoggerAddDebugEntry(logMessage);
-
-    // Get RastPort
-    rp = _rp(obj);
-    if (!rp)
-    {
-        fileLoggerAddDebugEntry("PTEImagePanel: rp failed...");
-        return;
-    }
-
-    // Get the screen properly from the window that contains this object
-    Object *win = getWindowObject(obj);
-    if (win)
-    {
-        // Get the screen from the window
-        struct Window *window = NULL;
-        get(win, MUIA_Window_Window, &window);
-        if (window)
-        {
-            scr = window->WScreen;
-            if (scr)
-            {
-                vp = &scr->ViewPort;
-                fileLoggerAddDebugEntry("Successfully retrieved ViewPort from window");
-            }
-        }
-    }
-
-    // Fallback to ViewPortAddress if we couldn't get it through MUI
-    if (!vp)
-    {
-        vp = ViewPortAddress(NULL);
-        fileLoggerAddDebugEntry("Falling back to ViewPortAddress(NULL)");
-    }
-
-    if (!vp)
-    {
-        fileLoggerAddDebugEntry("PTEImagePanel: No viewport available, cannot draw RGB image");
-        return;
-    }
-
-    // Initialize color tables
-    for (UBYTE i = 0; i < MAX_COLORS; i++)
-    {
-        colorUsed[i] = FALSE;
-    }
-
-    // Initialize the color map to invalid values
-    for (UBYTE r = 0; r < 16; r++)
-    {
-        for (UBYTE g = 0; g < 16; g++)
-        {
-            for (UBYTE b = 0; b < 16; b++)
-            {
-                colorMap[r][g][b] = 255; // Invalid pen number
-            }
-        }
-    }
-
-    // First pass: Find all unique colors in the image and build color map
-    fileLoggerAddDebugEntry("First pass: Identifying unique colors in the image");
-    for (WORD y = 0; y < data->imageHeight; y++)
-    {
-        for (WORD x = 0; x < data->imageWidth; x++)
-        {
-            // Calculate offset into RGB chunky data (3 bytes per pixel)
-            ULONG offset = (y * data->imageWidth + x) * 3;
-
-            // Get RGB components (bytes are packed R,G,B consecutively)
-            UBYTE r = data->imageData[offset];
-            UBYTE g = data->imageData[offset + 1];
-            UBYTE b = data->imageData[offset + 2];
-
-            // Convert 8-bit RGB to the 4-bit per component Amiga format (0-15)
-            UBYTE r4 = (r >> 4) & 0xF;
-            UBYTE g4 = (g >> 4) & 0xF;
-            UBYTE b4 = (b >> 4) & 0xF;
-
-            // If this color isn't already in our map, add it
-            if (colorMap[r4][g4][b4] == 255 && colorCount < MAX_COLORS)
-            {
-                // Assign a pen to this color
-                colorMap[r4][g4][b4] = colorCount;
-
-                // Store color values
-                redValues[colorCount] = r4;
-                greenValues[colorCount] = g4;
-                blueValues[colorCount] = b4;
-                colorUsed[colorCount] = TRUE;
-
-                colorCount++;
-
-                // Log the detected color
-                char colorMsg[64];
-                sprintf(colorMsg, "Color %d: R=%d, G=%d, B=%d", (int)colorCount, (int)r4, (int)g4, (int)b4);
-                fileLoggerAddDebugEntry(colorMsg);
-
-                // Stop if we've reached the maximum number of colors
-                if (colorCount >= MAX_COLORS)
-                {
-                    fileLoggerAddDebugEntry("Maximum number of colors reached (16)");
-                    break;
-                }
-            }
-        }
-
-        if (colorCount >= MAX_COLORS)
-            break;
-    }
-
-    // If we didn't find 16 colors, we'll still have valid entries up to colorCount
-    sprintf(logMessage, "Found %d unique colors in the image", (int)colorCount);
-    fileLoggerAddDebugEntry(logMessage);
-
-    // Set the palette with our identified colors
-    for (UBYTE i = 0; i < colorCount; i++)
-    {
-        SetRGB4(vp, i + 1, redValues[i], greenValues[i], blueValues[i]);
-    }
-
-    // Calculate inset bounds
-    left = _mleft(obj) + data->borderMargin;
-    top = _mtop(obj) + data->borderMargin;
-    right = _mright(obj) - data->borderMargin;
-    bottom = _mbottom(obj) - data->borderMargin;
-
-    // Convert width/height to right/bottom
-    left += 5;
-    top += 5;
-    right = left + right - 1;
-    bottom = top + bottom - 1;
-
-    // Second pass: Draw the image using our 1:1 color mapping
-    fileLoggerAddDebugEntry("Second pass: Drawing image with exact color mapping");
-    for (WORD y = 0; y < data->imageHeight; y++)
-    {
-        for (WORD x = 0; x < data->imageWidth; x++)
-        {
-            LONG px = left + x;
-            LONG py = top + y;
-
-            // Clip to drawable area
-            if (px <= right && py <= bottom)
-            {
-                // Calculate offset into RGB chunky data (3 bytes per pixel)
-                ULONG offset = (y * data->imageWidth + x) * 3;
-
-                // Get RGB components (bytes are packed R,G,B consecutively)
-                UBYTE r = data->imageData[offset];
-                UBYTE g = data->imageData[offset + 1];
-                UBYTE b = data->imageData[offset + 2];
-
-                // Convert 8-bit RGB to the 4-bit per component Amiga format (0-15)
-                UBYTE r4 = (r >> 4) & 0xF;
-                UBYTE g4 = (g >> 4) & 0xF;
-                UBYTE b4 = (b >> 4) & 0xF;
-
-                // Look up the pen from our color map
-                UBYTE pen = colorMap[r4][g4][b4];
-
-                // If this color wasn't in our map (which shouldn't happen if we have ?16 colors),
-                // use pen 1 as a fallback
-                if (pen == 255)
-                {
-                    pen = 1;
-                }
-                else
-                {
-                    // Add 1 to the pen because pens start at 1 (0 is often the background)
-                    pen = pen + 1;
-                }
-
-                // Set the pen and draw the pixel
-                SetAPen(rp, pen);
-                WritePixel(rp, px, py);
-            }
-        }
-    }
-
-    fileLoggerAddDebugEntry("RGB image drawing completed with 1:1 color mapping");
-}
-
 /***********************************************************************/
 IPTR SAVEDS mDraw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
 {
@@ -443,13 +238,13 @@ DISPATCHER(PTEImagePanelDispatcher)
         return 0;
     }
 
+    // case OM_DISPOSE:                    return mDispose(cl, obj, (APTR)msg);
+    // case OM_GET:                        return mGet(cl, obj, (APTR)msg);
+    // case OM_SET:                        return mSets(cl, obj, (APTR)msg);
     switch (msg->MethodID)
     {
     case OM_NEW:
         return mNew(cl, obj, (APTR)msg);
-        // case OM_DISPOSE:                    return mDispose(cl, obj, (APTR)msg);
-        // case OM_GET:                        return mGet(cl, obj, (APTR)msg);
-        // case OM_SET:                        return mSets(cl, obj, (APTR)msg);
     case MUIM_Draw:
         return mDraw(cl, obj, (APTR)msg);
 
@@ -469,114 +264,8 @@ LONG xget(Object *obj, ULONG attribute)
 
 /**********************************************************************/
 
-Object *getWindowObject(Object *obj)
-{
-    Object *win = NULL;
-    char logMessage[256];
-
-    fileLoggerAddDebugEntry("Searching for MUI window object...");
-    loggerFormatMessage(logMessage, "Starting from object at address: 0x%08lx", (ULONG)obj);
-    fileLoggerAddDebugEntry(logMessage);
-
-    // Attempt to find window by walking up the object hierarchy
-    Object *parent = obj;
-    int depth = 0;
-
-    while (parent)
-    {
-        depth++;
-        loggerFormatMessage(logMessage, "Checking parent level %d at address: 0x%08lx", depth, (ULONG)parent);
-        fileLoggerAddDebugEntry(logMessage);
-
-        // Check if this is a window
-        LONG isWindow = 0;
-        BOOL gotWindowAttr = get(parent, MUIA_WindowObject, &isWindow);
-
-        loggerFormatMessage(logMessage, "get(MUIA_WindowObject) result: %s, value: %ld",
-                            gotWindowAttr ? "TRUE" : "FALSE", isWindow);
-        fileLoggerAddDebugEntry(logMessage);
-
-        if (isWindow)
-        {
-            win = parent;
-            fileLoggerAddDebugEntry("Found MUI window object!");
-            break;
-        }
-
-        // Try direct approach - check for MUIA_Window_Window
-        struct Window *window = NULL;
-        BOOL gotWin = get(parent, MUIA_Window_Window, &window);
-
-        if (gotWin && window)
-        {
-            win = parent;
-            loggerFormatMessage(logMessage, "Found window through MUIA_Window_Window at level %d", depth);
-            fileLoggerAddDebugEntry(logMessage);
-            break;
-        }
-
-        // Try getting screen directly
-        struct Screen *scr = NULL;
-        BOOL gotScr = get(parent, MUIA_Window_Screen, &scr);
-
-        if (gotScr && scr)
-        {
-            win = parent;
-            loggerFormatMessage(logMessage, "Found window through MUIA_Window_Screen at level %d", depth);
-            fileLoggerAddDebugEntry(logMessage);
-            break;
-        }
-
-        // Move up to parent
-        Object *oldParent = parent;
-        get(parent, MUIA_Parent, &parent);
-
-        if (parent == oldParent)
-        {
-            fileLoggerAddDebugEntry("ERROR: Parent points to itself, breaking loop");
-            break;
-        }
-
-        if (depth > 10)
-        {
-            fileLoggerAddDebugEntry("WARNING: Deep hierarchy, stopping search");
-            break;
-        }
-    }
-
-    if (win)
-    {
-        fileLoggerAddDebugEntry("Successfully found window object, checking for attributes...");
-
-        // Verify we can access window and screen
-        struct Window *window = NULL;
-        struct Screen *screen = NULL;
-
-        BOOL gotWin = get(win, MUIA_Window_Window, &window);
-        BOOL gotScr = get(win, MUIA_Window_Screen, &screen);
-
-        loggerFormatMessage(logMessage, "Window attributes: MUIA_Window_Window=%s (0x%08lx), MUIA_Window_Screen=%s (0x%08lx)",
-                            gotWin ? "TRUE" : "FALSE", (ULONG)window,
-                            gotScr ? "TRUE" : "FALSE", (ULONG)screen);
-        fileLoggerAddDebugEntry(logMessage);
-
-        if (window && window->WScreen)
-        {
-            loggerFormatMessage(logMessage, "ViewPort available through window->WScreen: 0x%08lx",
-                                (ULONG)&window->WScreen->ViewPort);
-            fileLoggerAddDebugEntry(logMessage);
-        }
-    }
-    else
-    {
-        fileLoggerAddDebugEntry("Failed to find window object");
-    }
-
-    return win;
-}
-
-/* Draw PNG specific function optimized for 24-bit desktop environment */
-void mDrawPNG(Object *obj, struct PTEImagePanelData *data)
+/* Draw To Screen specific function optimized for 24-bit desktop environment */
+void mDrawToScreen(Object *obj, struct PTEImagePanelData *data)
 {
     struct RastPort *rp;
     WORD left, top, right, bottom;

@@ -7,6 +7,7 @@
 
 #include <exec/types.h>
 #include <graphics/view.h>
+#include <libraries/mui.h>
 
 /* Image palette structure */
 typedef struct
@@ -27,3 +28,6 @@ void initImgPalette(ImgPalette *palette);
 void freeImgPalette(ImgPalette *palette);
 
 #endif /* GRAPHICS_COMMON_H */
+
+/* Find the MUI window object for a given MUI object */
+Object *getWindowObject(Object *obj);
