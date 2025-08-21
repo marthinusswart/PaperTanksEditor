@@ -10,11 +10,9 @@ DISPATCHER(PTEImagePanelDispatcher);
 IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg);
 IPTR SAVEDS mDraw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg);
 void mDrawBorder(Object *obj, struct PTEImagePanelData *data);
-// void mDrawRGB2(Object *obj, struct PTEImagePanelData *data);
-// void mDrawRGB3(Object *obj, struct PTEImagePanelData *data);
 void mDrawToScreen(Object *obj, struct PTEImagePanelData *data);
 LONG xget(Object *obj, ULONG attribute);
-Object *getWindowObject(Object *obj);
+// Object *getWindowObject(Object *obj);
 
 /***********************************************************************/
 
