@@ -5,7 +5,6 @@
 
 /********************** Prototypes *************************/
 extern struct Library *MUIMasterBase;
-/***********************************************************************/
 
 DISPATCHER(PTEImagePanelDispatcher);
 IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg);
@@ -16,6 +15,8 @@ void mDrawRGB3(Object *obj, struct PTEImagePanelData *data);
 void mDrawPNG(Object *obj, struct PTEImagePanelData *data);
 LONG xget(Object *obj, ULONG attribute);
 Object *getWindowObject(Object *obj);
+
+/***********************************************************************/
 
 struct MUI_CustomClass *pteImagePanelClass;
 
@@ -30,7 +31,7 @@ struct MUI_CustomClass *createPTEImagePanelClass(void)
     fileLoggerAddDebugEntry("PTEImagePanel: Creating MUI_CreateCustomClass");
     loggerFormatMessage(logMessage, "Dispatcher address: 0x%08lx", PTEImagePanelDispatcher);
     fileLoggerAddDebugEntry(logMessage);
-    struct MUI_CustomClass *obj = MUI_CreateCustomClass(NULL, MUIC_Rectangle, NULL, sizeof(struct PTEImagePanelData), PTEImagePanelDispatcher);
+    struct MUI_CustomClass *obj = MUI_CreateCustomClass(NULL, MUIC_Rectangle, NULL, sizeof(struct PTEImagePanelData), (APTR)PTEImagePanelDispatcher);
     if (!obj)
     {
         fileLoggerAddDebugEntry("PTEImagePanel: Failed to create custom class");
@@ -51,7 +52,6 @@ struct MUI_CustomClass *createPTEImagePanelClass(void)
 
 IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg)
 {
-
     fileLoggerAddDebugEntry("PTEImagePanel: mNew called");
 
     obj = (Object *)DoSuperNew(cl, obj, TAG_MORE, msg->ops_AttrList);
@@ -105,10 +105,6 @@ IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg)
 
         case PTEA_ImageHeight:
             imageHeight = (WORD)walk->ti_Data;
-            break;
-
-        case PTEA_ImageWidth:
-            imageWidth = (WORD)walk->ti_Data;
             break;
 
         case PTEA_ImageWidth:
@@ -298,7 +294,7 @@ void mDrawRGB(Object *obj, struct PTEImagePanelData *data)
 
                 // Log the detected color
                 char colorMsg[64];
-                sprintf(colorMsg, "Color %d: R=%d, G=%d, B=%d", colorCount, r4, g4, b4);
+                sprintf(colorMsg, "Color %d: R=%d, G=%d, B=%d", (int)colorCount, (int)r4, (int)g4, (int)b4);
                 fileLoggerAddDebugEntry(colorMsg);
 
                 // Stop if we've reached the maximum number of colors
@@ -315,7 +311,7 @@ void mDrawRGB(Object *obj, struct PTEImagePanelData *data)
     }
 
     // If we didn't find 16 colors, we'll still have valid entries up to colorCount
-    sprintf(logMessage, "Found %d unique colors in the image", colorCount);
+    sprintf(logMessage, "Found %d unique colors in the image", (int)colorCount);
     fileLoggerAddDebugEntry(logMessage);
 
     // Set the palette with our identified colors

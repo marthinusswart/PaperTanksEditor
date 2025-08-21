@@ -10,6 +10,7 @@
                 "/opt/vbcc/targets/m68k-amigaos/include/inline",
                 "/opt/sdk/NDK3.2/Include_H/**",
                 "/opt/sdk/MUI_3.8/C/Include/**"
+                ,"${workspaceFolder}/external/frozen"
             ],
             "defines": [
                 "__AMIGA__",
@@ -28,6 +29,7 @@
                 "-I${workspaceFolder}/include",
                 "-I/opt/sdk/NDK3.2/Include_H",
                 "-I/opt/sdk/MUI_3.8/C/Include"
+                ,"-I${workspaceFolder}/external/frozen"
             ]
         }
     ],

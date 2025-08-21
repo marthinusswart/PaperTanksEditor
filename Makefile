@@ -15,6 +15,8 @@ UTILSDIR = src/utils
 VIEWSDIR = src/views
 WIDGETSDIR = src/widgets
 GRAPHICSDIR = src/graphics
+EXTERNAL_FROZEN = external/frozen
+EXTERNAL_FROZEN_INC = external/frozen
 
 # Target executable
 TARGET = $(BINDIR)/main
@@ -25,7 +27,8 @@ CFLAGS = +aos68k \
          -I/opt/vbcc/targets/m68k-amigaos/include \
          -I$(INCDIR) \
          -I/opt/sdk/MUI_3.8/C/Include \
-         -O2 -c99
+		 -I$(EXTERNAL_FROZEN_INC) \
+		 -O2 -c99
 
 # Library flags for NDK 3.2
 LDFLAGS = -L/opt/vbcc/targets/m68k-amigaos/lib \
@@ -39,6 +42,8 @@ VIEWS_SOURCES = $(VIEWSDIR)/aboutview.c
 WIDGETS_SOURCES = $(WIDGETSDIR)/pteimagepanel.c
 GRAPHICS_SOURCES = $(GRAPHICSDIR)/graphics.c $(GRAPHICSDIR)/imgpaletteutils.c $(GRAPHICSDIR)/imgpngutils.c $(GRAPHICSDIR)/imgpngfilters.c
 
+FROZEN_SOURCES = $(EXTERNAL_FROZEN)/frozen.c
+
 # Object files
 MAIN_OBJECTS = $(OBJDIR)/main.o
 UTILS_OBJECTS = $(OBJDIR)/utils/filelogger.o $(OBJDIR)/utils/windowlogger.o $(OBJDIR)/utils/zlibutils.o $(OBJDIR)/utils/huffmanUtils.o
@@ -46,8 +51,10 @@ VIEWS_OBJECTS = $(OBJDIR)/views/aboutview.o
 WIDGETS_OBJECTS = $(OBJDIR)/widgets/pteimagepanel.o
 GRAPHICS_OBJECTS = $(OBJDIR)/graphics/graphics.o $(OBJDIR)/graphics/imgpaletteutils.o $(OBJDIR)/graphics/imgpngutils.o $(OBJDIR)/graphics/imgpngfilters.o
 
+FROZEN_OBJECTS = $(OBJDIR)/frozen.o
+
 # All objects
-OBJECTS = $(MAIN_OBJECTS) $(UTILS_OBJECTS) $(VIEWS_OBJECTS) $(WIDGETS_OBJECTS) $(GRAPHICS_OBJECTS)
+OBJECTS = $(MAIN_OBJECTS) $(UTILS_OBJECTS) $(VIEWS_OBJECTS) $(WIDGETS_OBJECTS) $(GRAPHICS_OBJECTS) $(FROZEN_OBJECTS)
 
 # Default target
 all: directories $(TARGET) copy-assets
@@ -108,6 +115,11 @@ $(OBJDIR)/graphics/%.o: $(GRAPHICSDIR)/%.c
 
 # Compile source files - Widgets files
 $(OBJDIR)/widgets/%.o: $(WIDGETSDIR)/%.c
+	@mkdir -p $(@D)
+	$(CC) $(CFLAGS) $< -c -o $@
+
+# Compile frozen.c
+$(OBJDIR)/frozen.o: $(EXTERNAL_FROZEN)/frozen.c
 	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) $< -c -o $@
 

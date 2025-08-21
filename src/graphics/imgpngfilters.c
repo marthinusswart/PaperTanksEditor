@@ -199,7 +199,7 @@ BOOL applyPNGFilters(UBYTE *decompressedData, ULONG decompressedSize,
             break;
 
         default:
-            sprintf(logMessage, "Unknown PNG filter type: %d in row %lu", filterType, row);
+            sprintf(logMessage, "Unknown PNG filter type: %d in row %lu", (int)filterType, (unsigned long)row);
             fileLoggerAddDebugEntry(logMessage);
             return FALSE;
         }

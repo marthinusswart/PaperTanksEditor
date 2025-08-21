@@ -17,6 +17,7 @@
 #include <graphics/rastport.h>
 #include <graphics/view.h>
 #include <proto/graphics.h>
+#include <clib/muimaster_protos.h>
 
 #include "../utils/windowlogger.h"
 #include "../utils/filelogger.h"
@@ -30,6 +31,12 @@
 
 #ifndef _rp
 #define _rp(obj) (((struct MUIP_Draw *)msg)->rp)
+#endif
+
+#ifndef STACKARGS
+#ifdef __VBCC__
+#define STACKARGS
+#endif
 #endif
 
 extern struct MUI_CustomClass *pteImagePanelClass;

@@ -188,8 +188,8 @@ BOOL processZlibHeader(UBYTE *compressedData, ULONG compressedSize, UBYTE *compr
     /* Check if the compression method is 8 (DEFLATE) */
     if (*compressionMethod != 8)
     {
-        sprintf(logMessage, "Unsupported compression method: %d (expected 8 for DEFLATE)",
-                *compressionMethod);
+        sprintf(logMessage, "Unsupported compression method: %i (expected 8 for DEFLATE)",
+                (int)*compressionMethod);
         fileLoggerAddDebugEntry(logMessage);
         return FALSE;
     }
@@ -197,7 +197,7 @@ BOOL processZlibHeader(UBYTE *compressedData, ULONG compressedSize, UBYTE *compr
     /* Validate window size - CINFO must be between 0-7 for DEFLATE */
     if (*compressionInfo > 7)
     {
-        sprintf(logMessage, "Invalid compression info (window size): %d", *compressionInfo);
+        sprintf(logMessage, "Invalid compression info (window size): %d", (int)*compressionInfo);
         fileLoggerAddDebugEntry(logMessage);
         return FALSE;
     }
@@ -209,12 +209,13 @@ BOOL processZlibHeader(UBYTE *compressedData, ULONG compressedSize, UBYTE *compr
         sprintf(logMessage, "Invalid zlib header checksum: %lu is not divisible by 31",
                 checksum);
         fileLoggerAddDebugEntry(logMessage);
+        sprintf(logMessage, "Invalid zlib header checksum: %lu is not divisible by 31", (unsigned long)checksum);
         return FALSE;
     }
 
     /* Log header information */
     sprintf(logMessage, "Zlib header: CM=%d, CINFO=%d, FCHECK=%d, FDICT=%d, FLEVEL=%d",
-            *compressionMethod, *compressionInfo, *fCheck, *hasDictionary, *compressionLevel);
+            (int)*compressionMethod, (int)*compressionInfo, (int)*fCheck, (int)*hasDictionary, (int)*compressionLevel);
     fileLoggerAddDebugEntry(logMessage);
 
     /* If a preset dictionary is present, we need to handle that */
@@ -274,7 +275,7 @@ BOOL inflateData(UBYTE *compressedData, ULONG compressedSize, ULONG startPos, UB
         if (!readBits(&bitBuf, 2, &blockType))
             return FALSE;
 
-        sprintf(logMessage, "Block header: Final=%d, Type=%d", isFinalBlock, blockType);
+        sprintf(logMessage, "Block header: Final=%d, Type=%d", (int)isFinalBlock, (int)blockType);
         fileLoggerAddDebugEntry(logMessage);
 
         /* Process based on block type */
