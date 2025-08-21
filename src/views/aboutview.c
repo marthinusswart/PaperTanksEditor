@@ -11,7 +11,7 @@ void createAboutView(Object *app, UBYTE *pngImageData, ImgPalette *pngPalette)
 
     /* clang-format off */
 
-    APTR subWindow = DefaultSubWindow("About", MAKE_ID('A', 'B', 'T', 'T'), 400, 200),
+    APTR subWindow = DefaultSubWindow("About", MAKE_ID('A', 'B', 'T', 'T'), 600, 300),
 
         VGroup, GroupFrame,
             MUIA_Group_Spacing, 4,
@@ -21,15 +21,14 @@ void createAboutView(Object *app, UBYTE *pngImageData, ImgPalette *pngPalette)
                             Child, PTEImagePanelObject,
                                 MUIA_Background, MUII_ButtonBack,
                                 PTEA_ImageData, pngImageData,
-                                PTEA_ImageHeight, 25,
-                                PTEA_ImageWidth, 25,
+                                PTEA_ImageHeight, 100,
+                                PTEA_ImageWidth, 100,
                                 PTEA_ImgPalette, pngPalette,
                                 PTEA_IsPNG, TRUE,
                             End,
-                            Child, VSpace (35),
+                            Child, VSpace (105),
                         End,
-                        Child, HSpace (35),                        
-                        // Child, ScaledImage(MUII_HardDisk, 14, 8),
+                        Child, HSpace (105),
                         Child, RectangleObject, End,
                 End,
                 Child, list = List(IN_About),
