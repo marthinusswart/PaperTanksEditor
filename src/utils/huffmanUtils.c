@@ -108,7 +108,7 @@ BOOL processDynamicHuffmanBlock(BitBuffer *bitBuf, UBYTE *compressedData, ULONG 
         return FALSE;
     }
 
-    fileLoggerAddDebugEntry("Built Huffman tree for code lengths");
+    // fileLoggerAddDebugEntry("Built Huffman tree for code lengths");
 
     /* Use the code length table to decode the literal/length and distance code lengths */
     /* First decode literal/length code lengths */
@@ -259,7 +259,7 @@ BOOL processDynamicHuffmanBlock(BitBuffer *bitBuf, UBYTE *compressedData, ULONG 
         return FALSE;
     }
 
-    fileLoggerAddDebugEntry("Built Huffman trees for literals/lengths and distances");
+    // fileLoggerAddDebugEntry("Built Huffman trees for literals/lengths and distances");
 
     /* Use these trees to decode the actual compressed data (literals and length/distance pairs) */
     if (!decodeLZ77Data(bitBuf, &literalTable, &distanceTable, outputBuffer, outputBufferSize, outPos))
@@ -373,8 +373,8 @@ BOOL buildHuffmanTreeFromCodeLengths(UBYTE *codeLengths, ULONG numCodes, Huffman
     free(blCount);
     free(nextCode);
 
-    sprintf(logMessage, "Built Huffman tree with %lu codes, max bits: %u", numCodes, maxBits);
-    fileLoggerAddDebugEntry(logMessage);
+    // sprintf(logMessage, "Built Huffman tree with %lu codes, max bits: %u", numCodes, maxBits);
+    // fileLoggerAddDebugEntry(logMessage);
 
     return TRUE;
 }

@@ -373,7 +373,7 @@ BOOL decompressZlibData(UBYTE *compressedData, ULONG compressedSize, UBYTE **dec
     if (!inflateData(compressedData, compressedSize, srcPos, *decompressedData,
                      estimatedSize, decompressedSize))
     {
-        fileLoggerAddDebugEntry("DEFLATE decompression failed");
+        fileLoggerAddErrorEntry("DEFLATE decompression failed");
         free(*decompressedData);
         *decompressedData = NULL;
         return FALSE;
@@ -386,13 +386,13 @@ BOOL decompressZlibData(UBYTE *compressedData, ULONG compressedSize, UBYTE **dec
     /* Verify Adler-32 checksum */
     if (!verifyAdler32Checksum(compressedData, compressedSize, *decompressedData, *decompressedSize))
     {
-        fileLoggerAddDebugEntry("Adler-32 checksum verification failed");
+        fileLoggerAddErrorEntry("Adler-32 checksum verification failed");
         free(*decompressedData);
         *decompressedData = NULL;
         return FALSE;
     }
 
-    fileLoggerAddDebugEntry("Adler-32 checksum verification successful");
+    // fileLoggerAddDebugEntry("Adler-32 checksum verification successful");
     return TRUE;
 }
 
@@ -426,7 +426,7 @@ BOOL verifyAdler32Checksum(UBYTE *compressedData, ULONG compressedSize, UBYTE *d
     char logMessage[256];
     ULONG storedChecksum, calculatedChecksum;
 
-    fileLoggerAddDebugEntry("Starting Adler-32 checksum verification");
+    // fileLoggerAddDebugEntry("Starting Adler-32 checksum verification");
 
     /* Make sure we have at least 4 bytes for the checksum at the end */
     if (compressedSize < 6) /* 2 header bytes + at least 4 checksum bytes */
@@ -450,9 +450,9 @@ BOOL verifyAdler32Checksum(UBYTE *compressedData, ULONG compressedSize, UBYTE *d
     /* Calculate checksum of decompressed data */
     calculatedChecksum = calculateAdler32(decompressedData, decompressedSize);
 
-    sprintf(logMessage, "Adler-32 checksum: stored=0x%08lX, calculated=0x%08lX",
-            storedChecksum, calculatedChecksum);
-    fileLoggerAddDebugEntry(logMessage);
+    // sprintf(logMessage, "Adler-32 checksum: stored=0x%08lX, calculated=0x%08lX",
+    //         storedChecksum, calculatedChecksum);
+    // fileLoggerAddDebugEntry(logMessage);
 
     /* Compare stored and calculated checksums */
     if (storedChecksum == calculatedChecksum)
@@ -462,7 +462,7 @@ BOOL verifyAdler32Checksum(UBYTE *compressedData, ULONG compressedSize, UBYTE *d
     }
     else
     {
-        fileLoggerAddDebugEntry("Adler-32 checksum verification failed - checksums don't match");
+        fileLoggerAddErrorEntry("Adler-32 checksum verification failed - checksums don't match");
         return FALSE;
     }
 }

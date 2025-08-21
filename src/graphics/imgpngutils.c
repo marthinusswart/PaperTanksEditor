@@ -405,9 +405,9 @@ static BOOL readPNGChunk(FILE *file, ULONG *chunkType, ULONG *chunkLength, UBYTE
     chunkName[4] = '\0';
 
     /* Log the chunk information */
-    char logMessage[256];
-    sprintf(logMessage, "Found PNG chunk: %s, length: %lu bytes", chunkName, *chunkLength);
-    fileLoggerAddDebugEntry(logMessage);
+    // char logMessage[256];
+    // sprintf(logMessage, "Found PNG chunk: %s, length: %lu bytes", chunkName, *chunkLength);
+    // fileLoggerAddDebugEntry(logMessage);
 
     /* Allocate memory for the chunk data (if there is any) */
     if (*chunkLength > 0)

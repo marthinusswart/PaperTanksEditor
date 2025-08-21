@@ -381,7 +381,6 @@ void mDrawToScreen(Object *obj, struct PTEImagePanelData *data)
 
 BOOL mWritePixels(struct PTEImagePanelData *data, struct RastPort *rp, struct ViewPort *vp, WORD left, WORD top, WORD right, WORD bottom)
 {
-    fileLoggerAddDebugEntry("Using 24-bit direct RGB32 rendering with ViewPort");
 
     // Direct GBR drawing using the actual image data
     for (WORD y = 0; y < data->imageHeight; y++)
