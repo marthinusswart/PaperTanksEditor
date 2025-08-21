@@ -96,32 +96,32 @@ $(TARGET): directories $(OBJECTS)
 # Compile source files - Main files
 $(OBJDIR)/%.o: $(SRCDIR)/%.c
 	@mkdir -p $(@D)
-	$(CC) $(CFLAGS) $< -c -o $@
+	@$(CC) $(CFLAGS) $< -c -o $@
 
 # Compile source files - Utils files
 $(OBJDIR)/utils/%.o: $(UTILSDIR)/%.c
 	@mkdir -p $(@D)
-	$(CC) $(CFLAGS) $< -c -o $@
+	@$(CC) $(CFLAGS) $< -c -o $@
 
 # Compile source files - Views files
 $(OBJDIR)/views/%.o: $(VIEWSDIR)/%.c
 	@mkdir -p $(@D)
-	$(CC) $(CFLAGS) $< -c -o $@
+	@$(CC) $(CFLAGS) $< -c -o $@
 
 # Compile source files - Graphics files
 $(OBJDIR)/graphics/%.o: $(GRAPHICSDIR)/%.c
 	@mkdir -p $(@D)
-	$(CC) $(CFLAGS) $< -c -o $@
+	@$(CC) $(CFLAGS) $< -c -o $@
 
 # Compile source files - Widgets files
 $(OBJDIR)/widgets/%.o: $(WIDGETSDIR)/%.c
 	@mkdir -p $(@D)
-	$(CC) $(CFLAGS) $< -c -o $@
+	@$(CC) $(CFLAGS) $< -c -o $@
 
 # Compile frozen.c
 $(OBJDIR)/frozen.o: $(EXTERNAL_FROZEN)/frozen.c
 	@mkdir -p $(@D)
-	$(CC) $(CFLAGS) $< -c -o $@
+	@$(CC) $(CFLAGS) $< -c -o $@
 
 # Clean build artifacts
 clean:
