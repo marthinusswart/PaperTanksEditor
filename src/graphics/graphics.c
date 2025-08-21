@@ -50,10 +50,6 @@ Object *getWindowObject(Object *obj)
     return win;
 }
 
-#include <stdlib.h>
-#include <string.h>
-#include "graphics.h"
-
 /* Initialize a palette structure */
 void initImgPalette(ImgPalette *palette)
 {

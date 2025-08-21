@@ -94,7 +94,8 @@ int main(void)
     fileLoggerAddEntry("Testing PNG loading capability...");
     UBYTE *pngImageData = NULL;
     ImgPalette *pngPalette = NULL;
-    BOOL pngLoaded = loadPNGToBitmapObject("PROGDIR:assets/ui/tank-icon.png", &pngImageData, &pngPalette);
+    // BOOL pngLoaded = loadPNGToBitmapObject("PROGDIR:assets/ui/tank-icon.png", &pngImageData, &pngPalette);
+    BOOL pngLoaded = loadPNGToBitmapObject("PROGDIR:assets/tank.png", &pngImageData, &pngPalette);
     if (pngLoaded)
     {
         fileLoggerAddDebugEntry("PNG image loaded successfully");
@@ -140,7 +141,7 @@ int main(void)
                     Child, VGroup,
                         Child, RectangleObject, MUIA_Width, 100, MUIA_Height, 50, MUIA_Background, MUII_ButtonBack, MUIA_Frame, "box", End, 
                         // Create the custom object with attributes in MUI style                                               
-                        /* Child, PTEImagePanelObject,  
+                        Child, PTEImagePanelObject,  
                             MUIA_Width, 100,
                             MUIA_Height, 50,
                             MUIA_Background, MUII_ButtonBack,
@@ -148,11 +149,11 @@ int main(void)
                             PTEA_BorderMargin, 1,
                             PTEA_DrawBorder, TRUE,
                             PTEA_ImageData, pngImageData,
-                            PTEA_ImageHeight, 25,
-                            PTEA_ImageWidth, 25,
+                            PTEA_ImageHeight, 100,
+                            PTEA_ImageWidth, 100,
                             PTEA_ImgPalette, pngPalette,
                             PTEA_IsPNG, TRUE,
-                        End,*/
+                        End,
                     End,
 
                     Child, VGroup, GroupFrameT("Status Messages"),                    

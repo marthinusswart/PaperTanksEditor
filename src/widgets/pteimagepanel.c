@@ -12,7 +12,6 @@ IPTR SAVEDS mDraw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg);
 void mDrawBorder(Object *obj, struct PTEImagePanelData *data);
 void mDrawToScreen(Object *obj, struct PTEImagePanelData *data);
 LONG xget(Object *obj, ULONG attribute);
-// Object *getWindowObject(Object *obj);
 
 /***********************************************************************/
 
@@ -366,9 +365,9 @@ void mDrawToScreen(Object *obj, struct PTEImagePanelData *data)
     // For best performance, we'll use the ViewPort with SetRGB32
     if (vp)
     {
-        fileLoggerAddDebugEntry("Using 24-bit direct RGB rendering with ViewPort");
+        fileLoggerAddDebugEntry("Using 24-bit direct RGB32 rendering with ViewPort");
 
-        // Direct RGB drawing using the actual image data
+        // Direct GBR drawing using the actual image data
         for (WORD y = 0; y < data->imageHeight; y++)
         {
             for (WORD x = 0; x < data->imageWidth; x++)
@@ -383,10 +382,10 @@ void mDrawToScreen(Object *obj, struct PTEImagePanelData *data)
                     ULONG offset = (y * data->imageWidth + x) * 3;
                     ULONG pixelIndex = y * data->imageWidth + x;
 
-                    // Get RGB components (stored as RGB)
-                    UBYTE r = data->imageData[offset];     // R
-                    UBYTE g = data->imageData[offset + 1]; // G
-                    UBYTE b = data->imageData[offset + 2]; // B
+                    // Get RGB components (stored as GBR)
+                    UBYTE r = data->imageData[offset];     // G
+                    UBYTE g = data->imageData[offset + 1]; // B
+                    UBYTE b = data->imageData[offset + 2]; // R
 
                     // Check if we have a transparency mask and if this pixel is transparent
                     BOOL isTransparent = FALSE;
@@ -439,69 +438,6 @@ void mDrawToScreen(Object *obj, struct PTEImagePanelData *data)
     {
         fileLoggerAddDebugEntry("No ViewPort available - fallback to direct drawing");
         // Fallback handled below
-    }
-
-    // For 24-bit color direct drawing with ViewPort
-    if (vp)
-    {
-        // Log success about ViewPort usage
-        fileLoggerAddDebugEntry("Using ViewPort for 24-bit direct RGB drawing");
-    }
-    else
-    {
-        // If we're in this section, we need a fallback drawing method
-        fileLoggerAddDebugEntry("No ViewPort available, using fallback drawing method");
-
-        // Direct RGB drawing as a fallback method
-        for (WORD y = 0; y < data->imageHeight; y++)
-        {
-            for (WORD x = 0; x < data->imageWidth; x++)
-            {
-                LONG px = left + x;
-                LONG py = top + y;
-
-                // Clip to drawable area
-                if (px <= right && py <= bottom)
-                {
-                    // Calculate offset into RGB chunky data (3 bytes per pixel)
-                    ULONG offset = (y * data->imageWidth + x) * 3;
-                    ULONG pixelIndex = y * data->imageWidth + x;
-
-                    // Get RGB components from our 24-bit RGB data
-                    UBYTE r = data->imageData[offset];     // R
-                    UBYTE g = data->imageData[offset + 1]; // G
-                    UBYTE b = data->imageData[offset + 2]; // B
-
-                    // Check if we have a transparency mask and if this pixel is transparent
-                    BOOL isTransparent = FALSE;
-
-                    if (data->imgPalette && data->imgPalette->hasTransparency)
-                    {
-                        // For transparent PNGs, we need to check if this is a transparent pixel
-                        // In our current implementation, transparent pixels are marked as black (0,0,0)
-                        if (r == 0 && g == 0 && b == 0)
-                        {
-                            isTransparent = TRUE;
-                        }
-                    }
-
-                    // If the pixel is transparent, skip drawing it
-                    if (isTransparent)
-                    {
-                        continue; // Skip to the next pixel
-                    }
-
-                    // Create a pen value suitable for SetAPen (depends on the platform)
-                    // This is a fallback that may not work perfectly on all systems
-                    ULONG penValue = ((ULONG)r << 16) | ((ULONG)g << 8) | b;
-
-                    // Use the RGB value directly as a pen number
-                    // This may not display correctly on all systems without SetRGB32
-                    SetAPen(rp, penValue & 0xFF);
-                    WritePixel(rp, px, py);
-                }
-            }
-        }
     }
 
     fileLoggerAddDebugEntry("PNG drawing completed successfully");
