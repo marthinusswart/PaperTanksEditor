@@ -6,6 +6,7 @@
 #include <libraries/mui.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <proto/alib.h>
 
 typedef struct
 {
