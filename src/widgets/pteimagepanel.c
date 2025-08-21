@@ -12,6 +12,7 @@ IPTR SAVEDS mDraw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg);
 void mDrawBorder(Object *obj, struct PTEImagePanelData *data);
 void mDrawToScreen(Object *obj, struct PTEImagePanelData *data);
 LONG xget(Object *obj, ULONG attribute);
+BOOL mWritePixels(struct PTEImagePanelData *data, struct RastPort *rp, struct ViewPort *vp, WORD left, WORD top, WORD right, WORD bottom);
 
 /***********************************************************************/
 
@@ -354,7 +355,7 @@ void mDrawToScreen(Object *obj, struct PTEImagePanelData *data)
             else
             {
                 // In case we can't get the screen, we'll use a fallback approach for 24-bit drawing
-                fileLoggerAddDebugEntry("WARNING: Could not get screen structure, using direct 24-bit drawing without screen info");
+                fileLoggerAddErrorEntry("WARNING: Could not get screen structure, using direct 24-bit drawing without screen info");
                 // We'll continue without screen/viewport information
             }
         }
@@ -366,72 +367,7 @@ void mDrawToScreen(Object *obj, struct PTEImagePanelData *data)
     if (vp)
     {
         fileLoggerAddDebugEntry("Using 24-bit direct RGB32 rendering with ViewPort");
-
-        // Direct GBR drawing using the actual image data
-        for (WORD y = 0; y < data->imageHeight; y++)
-        {
-            for (WORD x = 0; x < data->imageWidth; x++)
-            {
-                LONG px = left + x;
-                LONG py = top + y;
-
-                // Clip to drawable area
-                if (px <= right && py <= bottom)
-                {
-                    // Calculate offset into RGB chunky data (3 bytes per pixel)
-                    ULONG offset = (y * data->imageWidth + x) * 3;
-                    ULONG pixelIndex = y * data->imageWidth + x;
-
-                    // Get RGB components (stored as GBR)
-                    UBYTE r = data->imageData[offset];     // G
-                    UBYTE g = data->imageData[offset + 1]; // B
-                    UBYTE b = data->imageData[offset + 2]; // R
-
-                    // Check if we have a transparency mask and if this pixel is transparent
-                    BOOL isTransparent = FALSE;
-
-                    if (data->imgPalette && data->imgPalette->hasTransparency)
-                    {
-                        // For transparent PNGs, we need to check if this is a transparent pixel
-                        // In our current implementation, transparent pixels are marked as black (0,0,0)
-                        // But we need to be careful not to skip legitimate black pixels
-                        // A better approach would be to use a separate transparency mask
-
-                        // This is a simplified approach - only pixels that are both black AND
-                        // in images with transparency flags are considered transparent
-                        if (r == 0 && g == 0 && b == 0)
-                        {
-                            // Log this potential transparent pixel for debugging
-                            // Disabled in production to avoid log spam
-                            // char transMsg[100];
-                            // sprintf(transMsg, "Found black pixel at (%d,%d) - treating as transparent", x, y);
-                            // fileLoggerAddDebugEntry(transMsg);
-
-                            isTransparent = TRUE;
-                        }
-                    }
-
-                    // If the pixel is transparent, skip drawing it
-                    if (isTransparent)
-                    {
-                        continue; // Skip to the next pixel
-                    }
-
-                    // Convert 8-bit RGB to 32-bit RGB required by SetRGB32
-                    ULONG r32 = ((ULONG)r << 24) | ((ULONG)r << 16) | ((ULONG)r << 8) | r;
-                    ULONG g32 = ((ULONG)g << 24) | ((ULONG)g << 16) | ((ULONG)g << 8) | g;
-                    ULONG b32 = ((ULONG)b << 24) | ((ULONG)b << 16) | ((ULONG)b << 8) | b;
-
-                    // Set the color for a temporary pen in the viewport
-                    SetRGB32(vp, 5, r32, g32, b32);
-
-                    // Draw with the temporary pen
-                    SetAPen(rp, 5);
-                    WritePixel(rp, px, py);
-                }
-            }
-        }
-
+        mWritePixels(data, rp, vp, left, top, right, bottom);
         fileLoggerAddDebugEntry("Completed drawing with SetRGB32 for direct RGB rendering");
     }
     else
@@ -441,4 +377,75 @@ void mDrawToScreen(Object *obj, struct PTEImagePanelData *data)
     }
 
     fileLoggerAddDebugEntry("PNG drawing completed successfully");
+}
+
+BOOL mWritePixels(struct PTEImagePanelData *data, struct RastPort *rp, struct ViewPort *vp, WORD left, WORD top, WORD right, WORD bottom)
+{
+    fileLoggerAddDebugEntry("Using 24-bit direct RGB32 rendering with ViewPort");
+
+    // Direct GBR drawing using the actual image data
+    for (WORD y = 0; y < data->imageHeight; y++)
+    {
+        for (WORD x = 0; x < data->imageWidth; x++)
+        {
+            LONG px = left + x;
+            LONG py = top + y;
+
+            // Clip to drawable area
+            if (px <= right && py <= bottom)
+            {
+                // Calculate offset into RGB chunky data (3 bytes per pixel)
+                ULONG offset = (y * data->imageWidth + x) * 3;
+                ULONG pixelIndex = y * data->imageWidth + x;
+
+                // Get RGB components (stored as GBR)
+                UBYTE r = data->imageData[offset];     // G
+                UBYTE g = data->imageData[offset + 1]; // B
+                UBYTE b = data->imageData[offset + 2]; // R
+
+                // Check if we have a transparency mask and if this pixel is transparent
+                BOOL isTransparent = FALSE;
+
+                if (data->imgPalette && data->imgPalette->hasTransparency)
+                {
+                    // For transparent PNGs, we need to check if this is a transparent pixel
+                    // In our current implementation, transparent pixels are marked as black (0,0,0)
+                    // But we need to be careful not to skip legitimate black pixels
+                    // A better approach would be to use a separate transparency mask
+
+                    // This is a simplified approach - only pixels that are both black AND
+                    // in images with transparency flags are considered transparent
+                    if (r == 0 && g == 0 && b == 0)
+                    {
+                        // Log this potential transparent pixel for debugging
+                        // Disabled in production to avoid log spam
+                        // char transMsg[100];
+                        // sprintf(transMsg, "Found black pixel at (%d,%d) - treating as transparent", x, y);
+                        // fileLoggerAddDebugEntry(transMsg);
+
+                        isTransparent = TRUE;
+                    }
+                }
+
+                // If the pixel is transparent, skip drawing it
+                if (isTransparent)
+                {
+                    continue; // Skip to the next pixel
+                }
+
+                // Convert 8-bit RGB to 32-bit RGB required by SetRGB32
+                ULONG r32 = ((ULONG)r << 24) | ((ULONG)r << 16) | ((ULONG)r << 8) | r;
+                ULONG g32 = ((ULONG)g << 24) | ((ULONG)g << 16) | ((ULONG)g << 8) | g;
+                ULONG b32 = ((ULONG)b << 24) | ((ULONG)b << 16) | ((ULONG)b << 8) | b;
+
+                // Set the color for a temporary pen in the viewport
+                SetRGB32(vp, 5, r32, g32, b32);
+
+                // Draw with the temporary pen
+                SetAPen(rp, 5);
+                WritePixel(rp, px, py);
+            }
+        }
+    }
+    return TRUE;
 }

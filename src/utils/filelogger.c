@@ -287,3 +287,33 @@ void fileLoggerAddDebugEntry(const char *entry)
         fileLoggerAddEntry(debugEntry);
     }
 }
+
+// Adds an error entry to the log with "ERROR: " prefix
+void fileLoggerAddErrorEntry(const char *entry)
+{
+    if (!fileLogger || !fileLogger->isInitialized)
+    {
+        return;
+    }
+
+    char errorEntry[512];
+    LONG i, j;
+    const char *prefix = "ERROR: ";
+
+    // Copy prefix
+    for (i = 0; prefix[i] && i < 510; i++)
+    {
+        errorEntry[i] = prefix[i];
+    }
+
+    // Copy the actual message
+    for (j = 0; entry[j] && (i + j) < 510; j++)
+    {
+        errorEntry[i + j] = entry[j];
+    }
+
+    errorEntry[i + j] = '\0';
+
+    // Log using the standard entry function
+    fileLoggerAddEntry(errorEntry);
+}

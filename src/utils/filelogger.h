@@ -20,6 +20,7 @@ typedef struct
 extern void fileLoggerInit(const char *filename);
 extern void fileLoggerAddEntry(const char *entry);
 extern void fileLoggerAddDebugEntry(const char *entry);
+extern void fileLoggerAddErrorEntry(const char *entry);
 extern void fileLoggerSetDebug(BOOL enableDebug);
 extern void fileLoggerClose(void);
 extern BOOL loggerFormatMessage(char *outBuf, const char *format, ...);
