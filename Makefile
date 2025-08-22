@@ -17,6 +17,8 @@ WIDGETSDIR = src/widgets
 GRAPHICSDIR = src/graphics
 EXTERNAL_FROZEN = external/frozen
 EXTERNAL_FROZEN_INC = external/frozen
+EXTERNAL_LODEPNG = external/lodepng
+EXTERNAL_PUFF = external/zlib/
 
 # Target executable
 TARGET = $(BINDIR)/main
@@ -35,28 +37,38 @@ LDFLAGS = -L/opt/vbcc/targets/m68k-amigaos/lib \
           -L/opt/sdk/NDK3.2/lib \
           -lamiga -lauto
 
-# Source files
 MAIN_SOURCES = $(SRCDIR)/main.c
-UTILS_SOURCES = $(UTILSDIR)/filelogger.c $(UTILSDIR)/windowlogger.c $(UTILSDIR)/zlibutils.c $(UTILSDIR)/huffmanUtils.c
-VIEWS_SOURCES = $(VIEWSDIR)/aboutview.c
-WIDGETS_SOURCES = $(WIDGETSDIR)/pteimagepanel.c
-GRAPHICS_SOURCES = $(GRAPHICSDIR)/graphics.c $(GRAPHICSDIR)/imgpaletteutils.c $(GRAPHICSDIR)/imgpngutils.c $(GRAPHICSDIR)/imgpngfilters.c
+UTILS_SOURCES = $(UTILSDIR)/*.c $(UTILSDIR)/zlib/*.c
+VIEWS_SOURCES = $(VIEWSDIR)/*.c
+WIDGETS_SOURCES = $(WIDGETSDIR)/*.c
+GRAPHICS_SOURCES = $(wildcard $(GRAPHICSDIR)/*.c) $(wildcard $(GRAPHICSDIR)/png/*.c)
 
-FROZEN_SOURCES = $(EXTERNAL_FROZEN)/frozen.c
-PUFF_SOURCES = external/zlib/puff.c
+FROZEN_SOURCES = $(EXTERNAL_FROZEN)/*.c
+PUFF_SOURCES = $(EXTERNAL_PUFF)/*.c
+LODEPNG_SOURCES = $(EXTERNAL_LODEPNG)/*.c
+FROZEN_SOURCES = $(wildcard $(EXTERNAL_FROZEN)/*.c)
+FROZEN_OBJECTS = $(patsubst external/frozen/%.c, obj/external/frozen/%.o, $(FROZEN_SOURCES))
 
 # Object files
 MAIN_OBJECTS = $(OBJDIR)/main.o
-UTILS_OBJECTS = $(OBJDIR)/utils/filelogger.o $(OBJDIR)/utils/windowlogger.o $(OBJDIR)/utils/zlibutils.o $(OBJDIR)/utils/huffmanUtils.o
-VIEWS_OBJECTS = $(OBJDIR)/views/aboutview.o
-WIDGETS_OBJECTS = $(OBJDIR)/widgets/pteimagepanel.o
-GRAPHICS_OBJECTS = $(OBJDIR)/graphics/graphics.o $(OBJDIR)/graphics/imgpaletteutils.o $(OBJDIR)/graphics/imgpngutils.o $(OBJDIR)/graphics/imgpngfilters.o
+UTILS_SOURCES_LIST = $(filter-out $(UTILSDIR)/zlib/%.c, $(wildcard $(UTILSDIR)/*.c))
+UTILS_OBJECTS = $(patsubst src/utils/%.c, obj/utils/%.o, $(UTILS_SOURCES_LIST))
+ZLIB_SOURCES_LIST = $(wildcard $(UTILSDIR)/zlib/*.c)
+ZLIB_OBJECTS = $(patsubst src/utils/zlib/%.c, obj/utils/zlib/%.o, $(ZLIB_SOURCES_LIST))
+VIEWS_OBJECTS = $(patsubst src/views/%.c, obj/views/%.o, $(wildcard $(VIEWSDIR)/*.c))
+WIDGETS_OBJECTS = $(patsubst src/widgets/%.c, obj/widgets/%.o, $(wildcard $(WIDGETSDIR)/*.c))
+GRAPHICS_OBJECTS = $(patsubst src/%, obj/%, $(GRAPHICS_SOURCES:.c=.o))
 
-FROZEN_OBJECTS = $(OBJDIR)/frozen.o
-PUFF_OBJECTS = $(OBJDIR)/puff.o
+FROZEN_OBJECTS = $(patsubst external/frozen/%.c, obj/external/frozen/%.o, $(FROZEN_SOURCES))
+PUFF_OBJECTS = $(patsubst external/zlib/%.c, obj/external/zlib/%.o, $(PUFF_SOURCES))
+LODEPNG_OBJECTS = $(patsubst external/lodepng/%.c, obj/external/lodepng/%.o, $(LODEPNG_SOURCES))
+PUFF_SOURCES = $(filter-out $(EXTERNAL_PUFF)/pufftest.c, $(wildcard $(EXTERNAL_PUFF)/*.c))
+PUFF_OBJECTS = $(patsubst external/zlib/%.c, obj/external/zlib/%.o, $(PUFF_SOURCES))
+LODEPNG_SOURCES = $(wildcard $(EXTERNAL_LODEPNG)/*.c)
+LODEPNG_OBJECTS = $(patsubst external/lodepng/%.c, obj/external/lodepng/%.o, $(LODEPNG_SOURCES))
 
 # All objects
-OBJECTS = $(MAIN_OBJECTS) $(UTILS_OBJECTS) $(VIEWS_OBJECTS) $(WIDGETS_OBJECTS) $(GRAPHICS_OBJECTS) $(FROZEN_OBJECTS) $(PUFF_OBJECTS)
+OBJECTS = $(MAIN_OBJECTS) $(UTILS_OBJECTS) $(ZLIB_OBJECTS) $(VIEWS_OBJECTS) $(WIDGETS_OBJECTS) $(GRAPHICS_OBJECTS) $(FROZEN_OBJECTS) $(PUFF_OBJECTS) $(LODEPNG_OBJECTS)
 
 # Default target
 all: directories $(TARGET) copy-assets
@@ -105,8 +117,14 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.c
 	@mkdir -p $(@D)
 	@$(CC) $(CFLAGS) $< -c -o $@
 
+
 # Compile source files - Utils files
 $(OBJDIR)/utils/%.o: $(UTILSDIR)/%.c
+	@mkdir -p $(@D)
+	@$(CC) $(CFLAGS) $< -c -o $@
+
+# Compile source files - Utils/zlib files
+$(OBJDIR)/utils/zlib/%.o: $(UTILSDIR)/zlib/%.c
 	@mkdir -p $(@D)
 	@$(CC) $(CFLAGS) $< -c -o $@
 
@@ -115,8 +133,14 @@ $(OBJDIR)/views/%.o: $(VIEWSDIR)/%.c
 	@mkdir -p $(@D)
 	@$(CC) $(CFLAGS) $< -c -o $@
 
+
 # Compile source files - Graphics files
 $(OBJDIR)/graphics/%.o: $(GRAPHICSDIR)/%.c
+	@mkdir -p $(@D)
+	@$(CC) $(CFLAGS) $< -c -o $@
+
+# Compile source files - Graphics/png files
+$(OBJDIR)/graphics/png/%.o: $(GRAPHICSDIR)/png/%.c
 	@mkdir -p $(@D)
 	@$(CC) $(CFLAGS) $< -c -o $@
 
@@ -125,14 +149,18 @@ $(OBJDIR)/widgets/%.o: $(WIDGETSDIR)/%.c
 	@mkdir -p $(@D)
 	@$(CC) $(CFLAGS) $< -c -o $@
 
-
-# Compile frozen.c
-$(OBJDIR)/frozen.o: $(EXTERNAL_FROZEN)/frozen.c
+# Compile external/frozen files
+$(OBJDIR)/external/frozen/%.o: $(EXTERNAL_FROZEN)/%.c
 	@mkdir -p $(@D)
 	@$(CC) $(CFLAGS) $< -c -o $@
 
-# Compile puff.c
-$(OBJDIR)/puff.o: external/zlib/puff.c
+# Compile external/zlib files
+$(OBJDIR)/external/zlib/%.o: $(EXTERNAL_PUFF)/%.c
+	@mkdir -p $(@D)
+	@$(CC) $(CFLAGS) $< -c -o $@
+
+# Compile external/lodepng files
+$(OBJDIR)/external/lodepng/%.o: $(EXTERNAL_LODEPNG)/%.c
 	@mkdir -p $(@D)
 	@$(CC) $(CFLAGS) $< -c -o $@
 

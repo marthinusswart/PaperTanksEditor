@@ -7,6 +7,12 @@
 #define IMGPNGFILTERS_H
 
 #include <exec/types.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <exec/types.h>
+#include <proto/exec.h>
+#include "../../utils/filelogger.h"
 
 /* PNG filter type constants */
 #define PNG_FILTER_NONE 0

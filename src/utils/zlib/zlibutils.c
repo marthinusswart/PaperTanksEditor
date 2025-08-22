@@ -3,15 +3,8 @@
  * Used for decompressing zlib data in PNG files
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <exec/types.h>
-#include <proto/exec.h>
-#include <proto/dos.h>
 #include "zlibutils.h"
 #include "huffmanUtils.h"
-#include "filelogger.h"
 
 /* Process an unsupported block type (fixed or dynamic Huffman) by skipping it */
 BOOL processSkipUnsupportedBlock(BitBuffer *bitBuf, BOOL isFinalBlock, const char *blockTypeName)

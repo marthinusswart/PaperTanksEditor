@@ -7,6 +7,13 @@
 #define ZLIBUTILS_H
 
 #include <exec/types.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <exec/types.h>
+#include <proto/exec.h>
+#include <proto/dos.h>
+#include "../filelogger.h"
 
 /* Bit buffer structure for reading bits from a byte stream */
 typedef struct BitBuffer

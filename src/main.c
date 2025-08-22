@@ -26,7 +26,7 @@
 #include "views/aboutview.h"
 #include "widgets/pteimagepanel.h"
 #include "graphics/graphics.h"
-#include "graphics/imgpngutils.h"
+#include "graphics/png/imgpngutils.h"
 
 /* MUI Libraries */
 struct Library *MUIMasterBase = NULL;

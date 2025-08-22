@@ -3,13 +3,7 @@
  * Used to process filtered scanlines in PNG files
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <exec/types.h>
-#include <proto/exec.h>
 #include "imgpngfilters.h"
-#include "../utils/filelogger.h"
 
 /* Paeth predictor function as defined in the PNG specification */
 UBYTE paethPredictor(UBYTE a, UBYTE b, UBYTE c)

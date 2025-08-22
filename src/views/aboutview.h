@@ -13,7 +13,7 @@
 #include "../widgets/listwidgets.h"
 #include "../widgets/imagewidgets.h"
 #include "../widgets/pteimagepanel.h"
-#include "../graphics/imgpngutils.h"
+#include "../graphics/png/imgpngutils.h"
 #include "../utils/windowlogger.h"
 #include "../utils/filelogger.h"
 #include "../graphics/graphics.h"

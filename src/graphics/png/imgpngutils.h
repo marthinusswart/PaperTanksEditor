@@ -8,8 +8,18 @@
 
 #include <exec/types.h>
 #include <graphics/view.h>
-#include "../utils/filelogger.h"
-#include "graphics.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <exec/types.h>
+#include <proto/exec.h>
+#include <proto/dos.h>
+#include "../../utils/filelogger.h"
+#include "../graphics.h"
+#include "../imgpaletteutils.h"
+#include "imgpngfilters.h"
+#include "../../utils/zlib/zlibutils.h"
+#include "../../../external/zlib/puff.h"
 
 /* PNG chunk type identifiers */
 #define PNG_CHUNK_IHDR 0x49484452 /* "IHDR" */
@@ -37,7 +47,6 @@ typedef struct
     UBYTE interlaceMethod;
 } PNGHeader;
 
-/* Load PNG image with palette information */
 BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalette **outPalette);
 
 #endif /* IMGPNGUTILS_H */

@@ -3,15 +3,7 @@
  * Used for decompressing DEFLATE compressed data in PNG files
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <exec/types.h>
-#include <proto/exec.h>
-#include <proto/dos.h>
 #include "huffmanUtils.h"
-#include "zlibutils.h"
-#include "filelogger.h"
 
 /* Code length code order according to RFC 1951 */
 static const UBYTE codelenCodeOrder[MAX_CODE_LENGTHS] = {

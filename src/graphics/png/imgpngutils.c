@@ -10,16 +10,7 @@
  * is adjusted accordingly.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <exec/types.h>
-#include <proto/exec.h>
-#include <proto/dos.h>
 #include "imgpngutils.h"
-#include "imgpaletteutils.h"
-#include "imgpngfilters.h"
-#include "../utils/zlibutils.h"
 
 /* Forward declarations for internal functions */
 static BOOL validatePNGSignature(FILE *file);
