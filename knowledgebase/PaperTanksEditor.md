@@ -35,14 +35,14 @@ This does not matter at code level, code as if values are RGBA, the gfx driver t
 
 Here is a table of structs in your codebase that should be refactored with `typedef` for easier usage:
 
-| Struct Name              | File Location                          | Current Definition                         | Suggested Typedef Example                                                  |
-| ------------------------ | -------------------------------------- | ------------------------------------------ | -------------------------------------------------------------------------- |
-| PTEImagePanelData        | pteimagepanel.h                        | `struct PTEImagePanelData { ... };`        | `typedef struct PTEImagePanelData PTEImagePanelData;`                      |
-| PTEColorPalettePanelData | ptecolorpalettepanel.h                 | `struct PTEColorPalettePanelData { ... };` | `typedef struct PTEColorPalettePanelData PTEColorPalettePanelData;`        |
-| Img8BitPalette           | (referenced in ptecolorpalettepanel.h) | `struct Img8BitPalette *colorPalette;`     | `typedef struct Img8BitPalette Img8BitPalette;` (if not already typedef'd) |
-| scan_array_info          | frozen.c                               | `struct scan_array_info { ... };`          | `typedef struct scan_array_info scan_array_info;`                          |
-| json_scanf_info          | frozen.c                               | `struct json_scanf_info { ... };`          | `typedef struct json_scanf_info json_scanf_info;`                          |
-| json_token               | frozen.c                               | `struct json_token *token;`                | `typedef struct json_token json_token;` (if not already typedef'd)         |
+| Struct Name                  | File Location                              | Current Definition                             | Suggested Typedef Example                                                      |
+| ---------------------------- | ------------------------------------------ | ---------------------------------------------- | ------------------------------------------------------------------------------ |
+| ~~PTEImagePanelData~~        | ~~pteimagepanel.h~~                        | ~~`struct PTEImagePanelData { ... };`~~        | ~~`typedef struct PTEImagePanelData PTEImagePanelData;`~~                      |
+| ~~PTEColorPalettePanelData~~ | ~~ptecolorpalettepanel.h~~                 | ~~`struct PTEColorPalettePanelData { ... };`~~ | ~~`typedef struct PTEColorPalettePanelData PTEColorPalettePanelData;`~~        |
+| ~~Img8BitPalette~~           | ~~(referenced in ptecolorpalettepanel.h)~~ | ~~`struct Img8BitPalette *colorPalette;`~~     | ~~`typedef struct Img8BitPalette Img8BitPalette;` (if not already typedef'd)~~ |
+| scan_array_info              | frozen.c                                   | `struct scan_array_info { ... };`              | `typedef struct scan_array_info scan_array_info;`                              |
+| json_scanf_info              | frozen.c                                   | `struct json_scanf_info { ... };`              | `typedef struct json_scanf_info json_scanf_info;`                              |
+| json_token                   | frozen.c                                   | `struct json_token *token;`                    | `typedef struct json_token json_token;` (if not already typedef'd)             |
 
 **Note:**
 

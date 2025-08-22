@@ -48,7 +48,7 @@ typedef struct
     BYTE borderColor;
     BOOL drawBorder;
     WORD borderMargin;
-    struct Img8BitPalette *colorPalette;
+    Img8BitPalette *colorPalette;
 } PTEColorPalettePanelData;
 
 extern void initializePTEColorPalettePanel(void);

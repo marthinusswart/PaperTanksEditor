@@ -107,7 +107,7 @@ static IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg)
     BYTE borderColor = 1; // Black
     WORD borderMargin = 0;
     BOOL drawBorder = FALSE;
-    struct Img8BitPalette *colorPalette = NULL;
+    Img8BitPalette *colorPalette = NULL;
 
     // Parse tag list for custom attributes
     struct TagItem *tags = msg->ops_AttrList;
@@ -137,7 +137,7 @@ static IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg)
             break;
 
         case PTEA_ColorPalette:
-            colorPalette = (struct Img8BitPalette *)walk->ti_Data;
+            colorPalette = (Img8BitPalette *)walk->ti_Data;
             break;
 
         default:
