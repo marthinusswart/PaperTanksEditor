@@ -47,6 +47,6 @@ typedef struct
     UBYTE interlaceMethod;
 } PNGHeader;
 
-BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalette **outPalette);
+BOOL loadPNGToBitmapObject2(CONST_STRPTR filename, UBYTE **outImageData, ImgPalette **outPalette);
 
 #endif /* IMGPNGUTILS_H */

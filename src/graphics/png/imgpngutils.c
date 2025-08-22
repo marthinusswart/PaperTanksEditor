@@ -25,7 +25,7 @@ static void generateTestPattern(UBYTE **outImageData, ULONG width, ULONG height)
 static void logTestPatternColorGrid(void);
 
 /* Main PNG loading function - simplified version for 24-bit RGB PNGs */
-BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalette **outPalette)
+BOOL loadPNGToBitmapObject2(CONST_STRPTR filename, UBYTE **outImageData, ImgPalette **outPalette)
 {
     FILE *file = NULL;
     BOOL success = FALSE;

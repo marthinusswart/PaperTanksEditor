@@ -27,6 +27,7 @@
 #include "widgets/pteimagepanel.h"
 #include "graphics/graphics.h"
 #include "graphics/png/imgpngutils.h"
+#include "graphics/png/pngutils.h"
 
 /* MUI Libraries */
 struct Library *MUIMasterBase = NULL;
@@ -83,7 +84,7 @@ int main(void)
     fileLoggerAddInfoEntry("Testing PNG loading capability...");
     UBYTE *pngImageData = NULL;
     ImgPalette *pngPalette = NULL;
-    BOOL pngLoaded = loadPNGToBitmapObject("PROGDIR:assets/ui/tank.png", &pngImageData, &pngPalette);
+    BOOL pngLoaded = loadPNGToBitmapObject2("PROGDIR:assets/ui/tank.png", &pngImageData, &pngPalette);
 
     /* PNG Test 2 */
     fileLoggerAddInfoEntry("Testing PNG loading capability...");

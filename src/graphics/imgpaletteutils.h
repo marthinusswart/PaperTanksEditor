@@ -14,7 +14,4 @@
 #include "../utils/filelogger.h"
 #include "graphics.h"
 
-// Maximum number of unique colors we can track
-#define MAX_UNIQUE_COLORS 32
-
 #endif /* IMGPALETTEUTILS_H */

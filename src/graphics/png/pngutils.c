@@ -1,10 +1,8 @@
-#include <stdlib.h>
-#include <string.h>
+
 #include "pngutils.h"
-#include "../../../external/lodepng/lodepng.h"
 
 /* Load PNG image with palette information */
-BOOL loadPNGToBitmapObject2(CONST_STRPTR filename, UBYTE **outImageData, ImgPalette **outPalette)
+BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalette **outPalette)
 {
     if (!filename || !outImageData || !outPalette)
         return FALSE;
@@ -17,6 +15,7 @@ BOOL loadPNGToBitmapObject2(CONST_STRPTR filename, UBYTE **outImageData, ImgPale
     error = lodepng_decode32_file(&image, &width, &height, filename);
     if (error || !image)
     {
+        fileLoggerAddErrorEntry("Failed to load PNG image");
         *outImageData = NULL;
         *outPalette = NULL;
         return FALSE;
@@ -29,6 +28,7 @@ BOOL loadPNGToBitmapObject2(CONST_STRPTR filename, UBYTE **outImageData, ImgPale
     ImgPalette *palette = (ImgPalette *)malloc(sizeof(ImgPalette));
     if (!palette)
     {
+        fileLoggerAddErrorEntry("Failed to load PNG Palette");
         free(image);
         *outImageData = NULL;
         *outPalette = NULL;
