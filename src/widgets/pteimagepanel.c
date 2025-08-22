@@ -1,4 +1,46 @@
-// Include your header
+/**
+ * @file pteimagepanel.c
+ * @brief Implements the PTEImagePanel custom MUI class for displaying images (PNG, 24-bit) with optional border and transparency.
+ *
+ * This file defines the PTEImagePanel class, which provides a custom MUI panel for rendering image data,
+ * including PNG support, border drawing, and transparency handling. It includes functions for class creation,
+ * initialization, drawing, and pixel rendering optimized for AmigaOS environments.
+ *
+ * Functions:
+ * - struct MUI_CustomClass *createPTEImagePanelClass(void)
+ *      Creates and initializes the custom MUI class for the image panel.
+ *
+ * - void initializePTEImagePanel(void)
+ *      Initializes the global pointer to the custom class.
+ *
+ * - static IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg)
+ *      Handles object instantiation and attribute parsing for the image panel.
+ *
+ * - static IPTR SAVEDS mDraw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
+ *      Handles drawing the panel, including border and image rendering.
+ *
+ * - static void mDrawBorder(Object *obj, struct PTEImagePanelData *data)
+ *      Draws a border around the image panel using the specified color and margin.
+ *
+ * - static void mDrawToScreen(Object *obj, struct PTEImagePanelData *data)
+ *      Renders PNG image data to the screen, handling 24-bit color and transparency.
+ *
+ * - static BOOL mWritePixels(struct PTEImagePanelData *data, struct RastPort *rp, struct ViewPort *vp, WORD left, WORD top, WORD right, WORD bottom)
+ *      Writes pixel data directly to the screen, supporting 24-bit RGB and alpha transparency.
+ *
+ * - static LONG xget(Object *obj, ULONG attribute)
+ *      Helper function to retrieve an attribute value from an object.
+ *
+ * - DISPATCHER(PTEImagePanelDispatcher)
+ *      Main dispatcher for handling MUI method calls (OM_NEW, MUIM_Draw, etc.).
+ *
+ * Global Variables:
+ * - struct MUI_CustomClass *pteImagePanelClass
+ *      Pointer to the custom class instance.
+ *
+ * Logging and error handling are integrated throughout for debugging and diagnostics.
+ */
+
 #include "pteimagepanel.h"
 
 /***********************************************************************/

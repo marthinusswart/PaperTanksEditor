@@ -1,3 +1,43 @@
+/**
+ * @file ptecolorpalettepanel.c
+ * @brief Implements the PTEColorPalettePanel custom MUI class for displaying color palettes with optional border.
+ *
+ * This file defines the PTEColorPalettePanel class, a custom MUI panel for rendering color palette data,
+ * including border drawing and integration with AmigaOS graphics. It provides functions for class creation,
+ * initialization, drawing, and palette rendering.
+ *
+ * Functions:
+ * - struct MUI_CustomClass *createPTEColorPalettePanelClass(void)
+ *      Creates and initializes the custom MUI class for the color palette panel.
+ *
+ * - void initializePTEColorPalettePanel(void)
+ *      Initializes the global pointer to the custom class.
+ *
+ * - static IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg)
+ *      Handles object instantiation and attribute parsing for the color palette panel.
+ *
+ * - static IPTR SAVEDS mDraw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
+ *      Handles drawing the panel, including border and palette rendering.
+ *
+ * - static void mDrawBorder(Object *obj, struct PTEColorPalettePanelData *data)
+ *      Draws a border around the color palette panel using the specified color and margin.
+ *
+ * - static void mDrawToScreen(Object *obj, struct PTEColorPalettePanelData *data)
+ *      Renders the color palette data to the screen, handling 24-bit color.
+ *
+ * - static LONG xget(Object *obj, ULONG attribute)
+ *      Helper function to retrieve an attribute value from an object.
+ *
+ * - DISPATCHER(PTEColorPalettePanelDispatcher)
+ *      Main dispatcher for handling MUI method calls (OM_NEW, MUIM_Draw, etc.).
+ *
+ * Global Variables:
+ * - struct MUI_CustomClass *pteColorPalettePanelClass
+ *      Pointer to the custom class instance.
+ *
+ * Logging and error handling are integrated throughout for debugging and diagnostics.
+ */
+
 #include "ptecolorpalettepanel.h"
 
 /********************** Prototypes *************************/
