@@ -142,28 +142,28 @@ int main(void)
                     Child, VGroup,
                         Child, RectangleObject, MUIA_Width, 100, MUIA_Height, 50, MUIA_Background, MUII_ButtonBack, MUIA_Frame, "box", End, 
                         // Create the custom object with attributes in MUI style                                               
-                        Child, PTEImagePanelObject,  
-                            MUIA_Width, 100,
-                            MUIA_Height, 50,
-                            MUIA_Background, MUII_ButtonBack,
-                            PTEA_BorderColor, 1,
-                            PTEA_BorderMargin, 5,
-                            PTEA_DrawBorder, TRUE,
-                            PTEA_ImageData, pngImageData2->data,
-                            PTEA_ImageHeight, pngImageData2->height,
-                            PTEA_ImageWidth, pngImageData2->width,
-                            PTEA_HasTransparency, pngImageData2->hasTransparency,
-                            PTEA_IsPNG, TRUE,
-                        End,
-                        Child, PTEColorPalettePanelObject,
-                            MUIA_Width, 100,
-                            MUIA_Height, 50,
-                            MUIA_Background, MUII_ButtonBack,
-                            PTEA_BorderColor, 1,
-                            PTEA_BorderMargin, 10,
-                            PTEA_DrawBorder, TRUE,
-                            PTEA_ColorPalette, outImgPalette,
-                        End,
+                        // Child, PTEImagePanelObject,  
+                        //     MUIA_Width, 100,
+                        //     MUIA_Height, 50,
+                        //     MUIA_Background, MUII_ButtonBack,
+                        //     PTEA_BorderColor, 1,
+                        //     PTEA_BorderMargin, 5,
+                        //     PTEA_DrawBorder, TRUE,
+                        //     PTEA_ImageData, pngImageData2->data,
+                        //     PTEA_ImageHeight, pngImageData2->height,
+                        //     PTEA_ImageWidth, pngImageData2->width,
+                        //     PTEA_HasTransparency, pngImageData2->hasTransparency,
+                        //     PTEA_IsPNG, TRUE,
+                        // End,
+                        // Child, PTEColorPalettePanelObject,
+                        //     MUIA_Width, 100,
+                        //     MUIA_Height, 50,
+                        //     MUIA_Background, MUII_ButtonBack,
+                        //     PTEA_BorderColor, 1,
+                        //     PTEA_BorderMargin, 0,
+                        //     PTEA_DrawBorder, TRUE,
+                        //     PTEA_ColorPalette, outImgPalette,
+                        // End,
                     End,
 
                     Child, VGroup, GroupFrameT("Status Messages"),                    
@@ -205,7 +205,7 @@ int main(void)
             running = FALSE;
             break;
         case MEN_ABOUT:
-            createAboutView(app, pngImageData->data);
+            createAboutView(app, pngImageData);
             break;
         }
 

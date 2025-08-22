@@ -1,6 +1,6 @@
 #include "aboutview.h"
 
-void createAboutView(Object *app, UBYTE *pngImageData)
+void createAboutView(Object *app, PNGImage *pngImage)
 {
     APTR list;
     static const char IN_About[] = "Paper Tanks Editor is the editor to create new levels and scenarios for the game Paper Tanks.\
@@ -20,14 +20,15 @@ void createAboutView(Object *app, UBYTE *pngImageData)
                         Child, HGroup,                      
                             Child, PTEImagePanelObject,
                                 MUIA_Background, MUII_ButtonBack,
-                                PTEA_ImageData, NULL,
-                                PTEA_ImageHeight, 100,
-                                PTEA_ImageWidth, 100,                                
+                                PTEA_ImageData, pngImage->data,
+                                PTEA_ImageHeight, pngImage->height,
+                                PTEA_ImageWidth, pngImage->width,
+                                PTEA_HasTransparency, pngImage->hasTransparency,
                                 PTEA_IsPNG, TRUE,
                             End,
-                            Child, VSpace (105),
+                            Child, VSpace (pngImage->height),
                         End,
-                        Child, HSpace (105),
+                        Child, HSpace (pngImage->width+10),
                         Child, RectangleObject, End,
                 End,
                 Child, list = List(IN_About),
