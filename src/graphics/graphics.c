@@ -3,8 +3,6 @@
  * Implementation of common graphics functions for AmigaOS 3.1
  */
 
-#include <stdlib.h>
-#include <string.h>
 #include "graphics.h"
 
 /*
@@ -80,4 +78,56 @@ void freeImg8BitPalette(Img8BitPalette *palette)
     if (palette)
     {
     }
+}
+
+BOOL getScreenViewport(Object *obj, Object *win, struct ViewPort **outVp)
+{
+    struct Screen *scr = NULL;
+    struct ViewPort *vp = NULL;
+
+    if (!obj || !win || !outVp)
+    {
+        fileLoggerAddErrorEntry("getScreenViewport: Invalid arguments (null pointer)");
+        return FALSE;
+    }
+
+    // Try to get screen using MUI macro
+    scr = _screen(obj);
+    if (scr)
+    {
+        fileLoggerAddDebugEntry("getScreenViewport: Successfully got screen using _screen() macro");
+        vp = &scr->ViewPort;
+    }
+    else
+    {
+        // Try getting window structure
+        struct Window *window = NULL;
+        get(win, MUIA_Window_Window, &window);
+
+        if (window && window->WScreen)
+        {
+            scr = window->WScreen;
+            vp = &scr->ViewPort;
+            fileLoggerAddDebugEntry("getScreenViewport: Successfully got screen from Window structure");
+        }
+        else
+        {
+            // Try getting screen directly
+            get(win, MUIA_Window_Screen, &scr);
+            if (scr)
+            {
+                vp = &scr->ViewPort;
+                fileLoggerAddDebugEntry("getScreenViewport: Successfully got screen from MUIA_Window_Screen");
+            }
+            else
+            {
+                fileLoggerAddErrorEntry("getScreenViewport: WARNING - Could not get screen structure, using direct 24-bit drawing without screen info");
+                *outVp = NULL;
+                return FALSE;
+            }
+        }
+    }
+
+    *outVp = vp;
+    return (vp != NULL);
 }

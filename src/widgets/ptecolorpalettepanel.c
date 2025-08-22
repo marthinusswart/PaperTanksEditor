@@ -52,6 +52,7 @@ static IPTR SAVEDS mDraw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg);
 static void mDrawBorder(Object *obj, PTEColorPalettePanelData *data);
 static LONG xget(Object *obj, ULONG attribute);
 static void mDrawToScreen(Object *obj, PTEColorPalettePanelData *data);
+// BOOL getScreenViewport(Object *obj, Object *win, struct ViewPort **outVp);
 
 /***********************************************************************/
 
@@ -316,41 +317,10 @@ static void mDrawToScreen(Object *obj, PTEColorPalettePanelData *data)
         return;
     }
 
-    // First try to get screen directly using MUI macros
-    scr = _screen(obj);
-    if (scr)
+    if (!getScreenViewport(obj, win, &vp))
     {
-        fileLoggerAddDebugEntry("Successfully got screen using _screen() macro");
-        vp = &scr->ViewPort;
-    }
-    else
-    {
-        // Try getting window structure if macro didn't work
-        struct Window *window = NULL;
-        get(win, MUIA_Window_Window, &window);
-
-        if (window && window->WScreen)
-        {
-            scr = window->WScreen;
-            vp = &scr->ViewPort;
-            fileLoggerAddDebugEntry("Successfully got screen from Window structure");
-        }
-        else
-        {
-            // Try getting screen directly
-            get(win, MUIA_Window_Screen, &scr);
-            if (scr)
-            {
-                vp = &scr->ViewPort;
-                fileLoggerAddDebugEntry("Successfully got screen from MUIA_Window_Screen");
-            }
-            else
-            {
-                // In case we can't get the screen, we'll use a fallback approach for 24-bit drawing
-                fileLoggerAddErrorEntry("WARNING: Could not get screen structure, using direct 24-bit drawing without screen info");
-                // We'll continue without screen/viewport information
-            }
-        }
+        fileLoggerAddErrorEntry("PTEColorPalettePanel: Could not get screen viewport");
+        return;
     }
 
     // For best performance, we'll use the ViewPort with SetRGB32
@@ -370,7 +340,10 @@ static void mDrawToScreen(Object *obj, PTEColorPalettePanelData *data)
 BOOL createPaletteSquares(int left, int top, int squareSize, Square *squares, int numSquares)
 {
     if (!squares || numSquares < PALETTE_SIZE || squareSize <= 0)
+    {
+        fileLoggerAddErrorEntry("createPaletteSquares: Invalid arguments (null pointer, insufficient array size, or non-positive square size)");
         return FALSE;
+    }
 
     for (int i = 0; i < PALETTE_SIZE; ++i)
     {
@@ -383,3 +356,55 @@ BOOL createPaletteSquares(int left, int top, int squareSize, Square *squares, in
     }
     return TRUE;
 }
+
+// BOOL getScreenViewport(Object *obj, Object *win, struct ViewPort **outVp)
+// {
+//     struct Screen *scr = NULL;
+//     struct ViewPort *vp = NULL;
+
+//     if (!obj || !win || !outVp)
+//     {
+//         fileLoggerAddErrorEntry("getScreenViewport: Invalid arguments (null pointer)");
+//         return FALSE;
+//     }
+
+//     // Try to get screen using MUI macro
+//     scr = _screen(obj);
+//     if (scr)
+//     {
+//         fileLoggerAddDebugEntry("getScreenViewport: Successfully got screen using _screen() macro");
+//         vp = &scr->ViewPort;
+//     }
+//     else
+//     {
+//         // Try getting window structure
+//         struct Window *window = NULL;
+//         get(win, MUIA_Window_Window, &window);
+
+//         if (window && window->WScreen)
+//         {
+//             scr = window->WScreen;
+//             vp = &scr->ViewPort;
+//             fileLoggerAddDebugEntry("getScreenViewport: Successfully got screen from Window structure");
+//         }
+//         else
+//         {
+//             // Try getting screen directly
+//             get(win, MUIA_Window_Screen, &scr);
+//             if (scr)
+//             {
+//                 vp = &scr->ViewPort;
+//                 fileLoggerAddDebugEntry("getScreenViewport: Successfully got screen from MUIA_Window_Screen");
+//             }
+//             else
+//             {
+//                 fileLoggerAddErrorEntry("getScreenViewport: WARNING - Could not get screen structure, using direct 24-bit drawing without screen info");
+//                 *outVp = NULL;
+//                 return FALSE;
+//             }
+//         }
+//     }
+
+//     *outVp = vp;
+//     return (vp != NULL);
+// }

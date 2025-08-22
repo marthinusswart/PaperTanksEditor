@@ -8,6 +8,9 @@
 #include <exec/types.h>
 #include <graphics/view.h>
 #include <libraries/mui.h>
+#include <stdlib.h>
+#include <string.h>
+#include "../utils/filelogger.h"
 
 /* Image palette structure */
 typedef struct
@@ -39,5 +42,8 @@ void freeImg8BitPalette(Img8BitPalette *palette);
 
 /* Find the MUI window object for a given MUI object */
 Object *getWindowObject(Object *obj);
+
+/* Find the ViewPort for a given MUI object */
+BOOL getScreenViewport(Object *obj, Object *win, struct ViewPort **outVp);
 
 #endif /* GRAPHICS_COMMON_H */
