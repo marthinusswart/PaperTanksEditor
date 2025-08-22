@@ -30,7 +30,7 @@ enum
 /* clang-format off */
 static struct NewMenu MainMenuData[] =
     {
-       
+    
         
         {NM_TITLE, (char *)"File", NULL, 0, 0, (APTR)MEN_EDIT},
             {NM_ITEM, (char *)"Load", (char *)"L", 0, 0, (APTR)MEN_CUT},
@@ -43,7 +43,7 @@ static struct NewMenu MainMenuData[] =
 
         {NM_END, NULL, NULL, 0, 0, (APTR)0},
 
-       
+    
 };
 /* clang-format on */
 
