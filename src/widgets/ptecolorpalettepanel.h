@@ -51,6 +51,14 @@ typedef struct
     Img8BitPalette *colorPalette;
 } PTEColorPalettePanelData;
 
+typedef struct
+{
+    int x;
+    int y;
+    int width;
+    int height;
+} Square;
+
 extern void initializePTEColorPalettePanel(void);
 extern struct MUI_CustomClass *createPTEColorPalettePanelClass(void);
 

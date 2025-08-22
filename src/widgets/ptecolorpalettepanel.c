@@ -52,19 +52,12 @@ static IPTR SAVEDS mDraw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg);
 static void mDrawBorder(Object *obj, PTEColorPalettePanelData *data);
 static LONG xget(Object *obj, ULONG attribute);
 static void mDrawToScreen(Object *obj, PTEColorPalettePanelData *data);
-// BOOL getScreenViewport(Object *obj, Object *win, struct ViewPort **outVp);
+static void mDrawSquares(Square *squares, struct RastPort *rp, struct ViewPort *vp, WORD left, WORD top);
+static BOOL createPaletteSquares(int left, int top, int squareSize, Square *squares, int numSquares);
 
 /***********************************************************************/
 
 struct MUI_CustomClass *pteColorPalettePanelClass;
-
-typedef struct
-{
-    int x;
-    int y;
-    int width;
-    int height;
-} Square;
 
 static ULONG STACKARGS DoSuperNew(struct IClass *const cl, Object *const obj, const ULONG tags, ...)
 {
@@ -309,6 +302,20 @@ static void mDrawToScreen(Object *obj, PTEColorPalettePanelData *data)
     if (bottom > _mbottom(obj) - data->borderMargin)
         bottom = _mbottom(obj) - data->borderMargin;
 
+    Square *squares = AllocMem(sizeof(Square) * PALETTE_SIZE, MEMF_CLEAR | MEMF_PUBLIC);
+    if (!squares)
+    {
+        fileLoggerAddErrorEntry("PTEColorPalettePanel: Failed to allocate memory for palette squares");
+        return;
+    }
+
+    // Create palette squares
+    if (!createPaletteSquares(left, top, 16, squares, PALETTE_SIZE))
+    {
+        fileLoggerAddErrorEntry("PTEColorPalettePanel: Failed to create palette squares");
+        return;
+    }
+
     // Get the screen from the window - this is required for direct RGB drawing
     Object *win = getWindowObject(obj);
     if (!win)
@@ -327,7 +334,7 @@ static void mDrawToScreen(Object *obj, PTEColorPalettePanelData *data)
     if (vp)
     {
         fileLoggerAddDebugEntry("Using 24-bit direct RGB32 rendering with ViewPort");
-        // mWritePixels(data, rp, vp, left, top, right, bottom);
+        mDrawSquares(squares, rp, vp, left, top);
         fileLoggerAddDebugEntry("Completed drawing with SetRGB32 for direct RGB rendering");
     }
     else
@@ -337,7 +344,7 @@ static void mDrawToScreen(Object *obj, PTEColorPalettePanelData *data)
     }
 }
 
-BOOL createPaletteSquares(int left, int top, int squareSize, Square *squares, int numSquares)
+static BOOL createPaletteSquares(int left, int top, int squareSize, Square *squares, int numSquares)
 {
     if (!squares || numSquares < PALETTE_SIZE || squareSize <= 0)
     {
@@ -357,54 +364,24 @@ BOOL createPaletteSquares(int left, int top, int squareSize, Square *squares, in
     return TRUE;
 }
 
-// BOOL getScreenViewport(Object *obj, Object *win, struct ViewPort **outVp)
-// {
-//     struct Screen *scr = NULL;
-//     struct ViewPort *vp = NULL;
+static void mDrawSquares(Square *squares, struct RastPort *rp, struct ViewPort *vp, WORD left, WORD top)
+{
+    if (!squares || !rp || !vp)
+    {
+        fileLoggerAddErrorEntry("mDrawSquares: Invalid arguments (null pointer)");
+        return;
+    }
 
-//     if (!obj || !win || !outVp)
-//     {
-//         fileLoggerAddErrorEntry("getScreenViewport: Invalid arguments (null pointer)");
-//         return FALSE;
-//     }
+    for (int i = 0; i < PALETTE_SIZE; ++i)
+    {
+        // Pen index is 1-based, so use i+1
+        SetAPen(rp, i + 1);
 
-//     // Try to get screen using MUI macro
-//     scr = _screen(obj);
-//     if (scr)
-//     {
-//         fileLoggerAddDebugEntry("getScreenViewport: Successfully got screen using _screen() macro");
-//         vp = &scr->ViewPort;
-//     }
-//     else
-//     {
-//         // Try getting window structure
-//         struct Window *window = NULL;
-//         get(win, MUIA_Window_Window, &window);
-
-//         if (window && window->WScreen)
-//         {
-//             scr = window->WScreen;
-//             vp = &scr->ViewPort;
-//             fileLoggerAddDebugEntry("getScreenViewport: Successfully got screen from Window structure");
-//         }
-//         else
-//         {
-//             // Try getting screen directly
-//             get(win, MUIA_Window_Screen, &scr);
-//             if (scr)
-//             {
-//                 vp = &scr->ViewPort;
-//                 fileLoggerAddDebugEntry("getScreenViewport: Successfully got screen from MUIA_Window_Screen");
-//             }
-//             else
-//             {
-//                 fileLoggerAddErrorEntry("getScreenViewport: WARNING - Could not get screen structure, using direct 24-bit drawing without screen info");
-//                 *outVp = NULL;
-//                 return FALSE;
-//             }
-//         }
-//     }
-
-//     *outVp = vp;
-//     return (vp != NULL);
-// }
+        // Draw filled rectangle for the square
+        RectFill(rp,
+                 squares[i].x,
+                 squares[i].y,
+                 squares[i].x + squares[i].width - 1,
+                 squares[i].y + squares[i].height - 1);
+    }
+}

@@ -349,41 +349,10 @@ static void mDrawToScreen(Object *obj, PTEImagePanelData *data)
         return;
     }
 
-    // First try to get screen directly using MUI macros
-    scr = _screen(obj);
-    if (scr)
+    if (!getScreenViewport(obj, win, &vp))
     {
-        fileLoggerAddDebugEntry("Successfully got screen using _screen() macro");
-        vp = &scr->ViewPort;
-    }
-    else
-    {
-        // Try getting window structure if macro didn't work
-        struct Window *window = NULL;
-        get(win, MUIA_Window_Window, &window);
-
-        if (window && window->WScreen)
-        {
-            scr = window->WScreen;
-            vp = &scr->ViewPort;
-            fileLoggerAddDebugEntry("Successfully got screen from Window structure");
-        }
-        else
-        {
-            // Try getting screen directly
-            get(win, MUIA_Window_Screen, &scr);
-            if (scr)
-            {
-                vp = &scr->ViewPort;
-                fileLoggerAddDebugEntry("Successfully got screen from MUIA_Window_Screen");
-            }
-            else
-            {
-                // In case we can't get the screen, we'll use a fallback approach for 24-bit drawing
-                fileLoggerAddErrorEntry("WARNING: Could not get screen structure, using direct 24-bit drawing without screen info");
-                // We'll continue without screen/viewport information
-            }
-        }
+        fileLoggerAddErrorEntry("PTEColorPalettePanel: Could not get screen viewport");
+        return;
     }
 
     // For best performance, we'll use the ViewPort with SetRGB32
