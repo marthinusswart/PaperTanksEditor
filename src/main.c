@@ -25,6 +25,8 @@
 #include "widgets/listwidgets.h"
 #include "views/aboutview.h"
 #include "widgets/pteimagepanel.h"
+#include "widgets/widgetconstants.h"
+#include "widgets/ptecolorpalettepanel.h"
 #include "graphics/graphics.h"
 #include "graphics/png/imgpngutils.h"
 #include "graphics/png/pngutils.h"
@@ -61,20 +63,20 @@ int main(void)
     // Log messages
     fileLoggerAddEntry("Application started");
 
-    // Init PTEImagePanel class
+    // Init Widget classes
     initializePTEImagePanel();
-    // struct MUI_CustomClass *pteImagePanelClass = createPTEImagePanelClass();
+    initializePTEColorPalettePanel();
 
-    if (!pteImagePanelClass)
+    if (!pteImagePanelClass || !pteColorPalettePanelClass)
     {
-        fileLoggerAddErrorEntry("Failed to create PTEImagePanel class");
+        fileLoggerAddErrorEntry("Failed to create PTEImagePanel or PTEColorPalettePanel class");
         cleanup_libs();
         return RETURN_FAIL;
     }
 
-    if (!pteImagePanelClass->mcc_Class)
+    if (!pteImagePanelClass->mcc_Class || !pteColorPalettePanelClass->mcc_Class)
     {
-        fileLoggerAddErrorEntry("Failed to create PTEImagePanel class instance");
+        fileLoggerAddErrorEntry("Failed to create PTEImagePanel or PTEColorPalettePanel class instance");
         cleanup_libs();
         return RETURN_FAIL;
     }
@@ -89,10 +91,10 @@ int main(void)
     PNGImage *pngImageData2 = NULL;
     Img8BitPalette *outImgPalette = NULL;
     BOOL pngLoaded2 = loadPNGToBitmapObject("PROGDIR:assets/tank2.png", &pngImageData2);
-    // if (!loadPaletteFromPNGImage32(pngImageData2, &outImgPalette))
-    // {
-    //     fileLoggerAddErrorEntry("Failed to load palette from PNG image");
-    // }
+    if (!loadPaletteFromPNGImage32(pngImageData2, &outImgPalette))
+    {
+        fileLoggerAddErrorEntry("Failed to load palette from PNG image");
+    }
 
     if (pngLoaded && pngLoaded2)
     {
@@ -152,6 +154,15 @@ int main(void)
                             PTEA_ImageWidth, pngImageData2->width,
                             PTEA_HasTransparency, pngImageData2->hasTransparency,
                             PTEA_IsPNG, TRUE,
+                        End,
+                        Child, PTEColorPalettePanelObject,
+                            MUIA_Width, 100,
+                            MUIA_Height, 50,
+                            MUIA_Background, MUII_ButtonBack,
+                            PTEA_BorderColor, 1,
+                            PTEA_BorderMargin, 1,
+                            PTEA_DrawBorder, TRUE,
+                            PTEA_ColorPalette, outImgPalette,
                         End,
                     End,
 

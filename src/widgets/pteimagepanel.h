@@ -47,6 +47,7 @@
 #include "../../include/SDI_compiler.h"
 #include "../../include/SDI_hook.h"
 #include "../graphics/graphics.h"
+#include "widgetconstants.h"
 
 /*** MUI Defines ***/
 
@@ -64,19 +65,6 @@
 
 extern struct MUI_CustomClass *pteImagePanelClass;
 #define PTEImagePanelObject NewObject(pteImagePanelClass->mcc_Class, NULL
-
-/* clang-format off */
-
-#define PTEA_BorderColor     0x30400001
-#define PTEA_DrawBorder      0x30400002
-#define PTEA_BorderMargin    0x30400003
-#define PTEA_ImageData       0x30400004
-#define PTEA_ImageWidth      0x30400005
-#define PTEA_ImageHeight     0x30400006
-#define PTEA_HasTransparency 0x30400007
-#define PTEA_IsPNG           0x3040000A
-
-/* clang-format on */
 
 struct PTEImagePanelData
 {
