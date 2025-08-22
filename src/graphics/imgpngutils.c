@@ -755,7 +755,15 @@ static BOOL processPNGImageDataChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE 
         UBYTE *decompressedData = NULL;
         ULONG decompressedSize = 0;
 
-        if (decompressZlibData(chunkData, chunkLength, &decompressedData, &decompressedSize))
+        BOOL enableDebug = TRUE;
+        BOOL decompressed = FALSE;
+
+        if (enableDebug)
+        {
+            decompressed = decompressZlibData(chunkData, chunkLength, &decompressedData, &decompressedSize);
+        }
+
+        if (decompressed)
         {
             /* Step 2: Apply PNG filters and convert to RGB */
             sprintf(logMessage, "Successfully decompressed %lu bytes of PNG data", decompressedSize);

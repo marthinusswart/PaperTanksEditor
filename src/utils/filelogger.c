@@ -27,6 +27,7 @@ void fileLoggerInit(const char *filename)
     fileLogger->logFile = 0;
     fileLogger->isInitialized = FALSE;
     fileLogger->isDebug = FALSE;
+    fileLogger->isInfo = FALSE;
 
     // Clear the path buffer
     for (i = 0; i < 256; i++)
@@ -239,6 +240,24 @@ void fileLoggerSetDebug(BOOL enableDebug)
     }
 }
 
+void fileLoggerSetInfo(BOOL enableInfo)
+{
+    if (fileLogger && fileLogger->isInitialized)
+    {
+        fileLogger->isInfo = enableInfo;
+
+        // Log the info state change
+        if (enableInfo)
+        {
+            fileLoggerAddEntry("Info logging enabled");
+        }
+        else
+        {
+            fileLoggerAddEntry("Info logging disabled");
+        }
+    }
+}
+
 BOOL loggerFormatMessage(char *outBuf, const char *format, ...)
 {
     if (!outBuf || !format)
@@ -285,6 +304,42 @@ void fileLoggerAddDebugEntry(const char *entry)
 
         // Log using the standard entry function
         fileLoggerAddEntry(debugEntry);
+    }
+}
+
+// Adds an info entry to the log with "INFO: " prefix if isInfo flag is enabled
+void fileLoggerAddInfoEntry(const char *entry)
+{
+    if (!fileLogger || !fileLogger->isInitialized)
+    {
+        return;
+    }
+
+    // Only log if info mode is enabled
+    if (fileLogger->isInfo || fileLogger->isDebug)
+    {
+        char infoEntry[512];
+        LONG i, j;
+
+        // Add "INFO: " prefix to the message
+        const char *prefix = "INFO : ";
+
+        // Copy prefix
+        for (i = 0; prefix[i] && i < 510; i++)
+        {
+            infoEntry[i] = prefix[i];
+        }
+
+        // Copy the actual message
+        for (j = 0; entry[j] && (i + j) < 510; j++)
+        {
+            infoEntry[i + j] = entry[j];
+        }
+
+        infoEntry[i + j] = '\0';
+
+        // Log using the standard entry function
+        fileLoggerAddEntry(infoEntry);
     }
 }
 

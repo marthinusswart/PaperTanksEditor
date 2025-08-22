@@ -43,6 +43,7 @@ WIDGETS_SOURCES = $(WIDGETSDIR)/pteimagepanel.c
 GRAPHICS_SOURCES = $(GRAPHICSDIR)/graphics.c $(GRAPHICSDIR)/imgpaletteutils.c $(GRAPHICSDIR)/imgpngutils.c $(GRAPHICSDIR)/imgpngfilters.c
 
 FROZEN_SOURCES = $(EXTERNAL_FROZEN)/frozen.c
+PUFF_SOURCES = external/zlib/puff.c
 
 # Object files
 MAIN_OBJECTS = $(OBJDIR)/main.o
@@ -52,9 +53,10 @@ WIDGETS_OBJECTS = $(OBJDIR)/widgets/pteimagepanel.o
 GRAPHICS_OBJECTS = $(OBJDIR)/graphics/graphics.o $(OBJDIR)/graphics/imgpaletteutils.o $(OBJDIR)/graphics/imgpngutils.o $(OBJDIR)/graphics/imgpngfilters.o
 
 FROZEN_OBJECTS = $(OBJDIR)/frozen.o
+PUFF_OBJECTS = $(OBJDIR)/puff.o
 
 # All objects
-OBJECTS = $(MAIN_OBJECTS) $(UTILS_OBJECTS) $(VIEWS_OBJECTS) $(WIDGETS_OBJECTS) $(GRAPHICS_OBJECTS) $(FROZEN_OBJECTS)
+OBJECTS = $(MAIN_OBJECTS) $(UTILS_OBJECTS) $(VIEWS_OBJECTS) $(WIDGETS_OBJECTS) $(GRAPHICS_OBJECTS) $(FROZEN_OBJECTS) $(PUFF_OBJECTS)
 
 # Default target
 all: directories $(TARGET) copy-assets
@@ -66,9 +68,14 @@ all: directories $(TARGET) copy-assets
 # Copy assets to bin directory
 copy-assets:
 	@echo "Copying PNG assets with directory structure preserved..."
-	@if [ -d "assets" ]; then \
+	@if [ -d "app/assets" ]; then \
 		mkdir -p $(BINDIR)/assets; \
-		find assets -name "*.png" -type f -exec cp --parents {} $(BINDIR)/ \; ; \
+		(cd app && find assets -name "*.png" -type f -exec cp --parents {} ../$(BINDIR)/ \; ); \
+		# Move assets directly under bin, remove any app/ prefix if present \
+		if [ -d "$(BINDIR)/app/assets" ]; then \
+			mv $(BINDIR)/app/assets/* $(BINDIR)/assets/; \
+			rm -rf $(BINDIR)/app; \
+		fi; \
 		echo "  PNG assets copied"; \
 	else \
 		echo "  Assets directory not found"; \
@@ -118,8 +125,14 @@ $(OBJDIR)/widgets/%.o: $(WIDGETSDIR)/%.c
 	@mkdir -p $(@D)
 	@$(CC) $(CFLAGS) $< -c -o $@
 
+
 # Compile frozen.c
 $(OBJDIR)/frozen.o: $(EXTERNAL_FROZEN)/frozen.c
+	@mkdir -p $(@D)
+	@$(CC) $(CFLAGS) $< -c -o $@
+
+# Compile puff.c
+$(OBJDIR)/puff.o: external/zlib/puff.c
 	@mkdir -p $(@D)
 	@$(CC) $(CFLAGS) $< -c -o $@
 

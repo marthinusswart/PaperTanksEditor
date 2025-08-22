@@ -26,13 +26,12 @@ static ULONG STACKARGS DoSuperNew(struct IClass *const cl, Object *const obj, co
 struct MUI_CustomClass *createPTEImagePanelClass(void)
 {
     char logMessage[256];
-    fileLoggerAddDebugEntry("PTEImagePanel: Creating MUI_CreateCustomClass");
     loggerFormatMessage(logMessage, "Dispatcher address: 0x%08lx", PTEImagePanelDispatcher);
     fileLoggerAddDebugEntry(logMessage);
     struct MUI_CustomClass *obj = MUI_CreateCustomClass(NULL, MUIC_Rectangle, NULL, sizeof(struct PTEImagePanelData), (APTR)PTEImagePanelDispatcher);
     if (!obj)
     {
-        fileLoggerAddDebugEntry("PTEImagePanel: Failed to create custom class");
+        fileLoggerAddErrorEntry("PTEImagePanel: Failed to create custom class");
         return NULL;
     }
     else
@@ -50,13 +49,12 @@ struct MUI_CustomClass *createPTEImagePanelClass(void)
 
 IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg)
 {
-    fileLoggerAddDebugEntry("PTEImagePanel: mNew called");
 
     obj = (Object *)DoSuperNew(cl, obj, TAG_MORE, msg->ops_AttrList);
 
     if (!obj)
     {
-        fileLoggerAddDebugEntry("PTEImagePanel: Failed to call Super");
+        fileLoggerAddErrorEntry("PTEImagePanel: Failed to call Super");
         return 0;
     }
 
@@ -150,7 +148,7 @@ void mDrawBorder(Object *obj, struct PTEImagePanelData *data)
     rp = _rp(obj);
     if (!rp)
     {
-        fileLoggerAddDebugEntry("PTEImagePanel: rp failed...");
+        fileLoggerAddErrorEntry("PTEImagePanel: rp failed...");
         return;
     }
 
@@ -178,7 +176,6 @@ void mDrawBorder(Object *obj, struct PTEImagePanelData *data)
 /***********************************************************************/
 IPTR SAVEDS mDraw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
 {
-    fileLoggerAddDebugEntry("PTEImagePanel: mDraw called");
 
     struct RastPort *rp;
     WORD left, top, right, bottom;
@@ -224,15 +221,15 @@ DISPATCHER(PTEImagePanelDispatcher)
 
     if (!msg->MethodID)
     {
-        fileLoggerAddDebugEntry("PTEImagePanel: PTEImagePanelDispatcher called with NULL MethodID");
+        fileLoggerAddErrorEntry("PTEImagePanel: PTEImagePanelDispatcher called with NULL MethodID");
         loggerFormatMessage(logMessage, "PTEImagePanel: PTEImagePanelDispatcher called with MethodID: 0x%08lx", msg->MethodID);
-        fileLoggerAddDebugEntry(logMessage);
+        fileLoggerAddErrorEntry(logMessage);
         loggerFormatMessage(logMessage, "msg pointer Address: 0x%08lx", (ULONG)msg);
-        fileLoggerAddDebugEntry(logMessage);
+        fileLoggerAddErrorEntry(logMessage);
         loggerFormatMessage(logMessage, "PTEImagePanel: Obj Address: 0x%08lx", (ULONG)obj);
-        fileLoggerAddDebugEntry(logMessage);
+        fileLoggerAddErrorEntry(logMessage);
         loggerFormatMessage(logMessage, "PTEImagePanel: Cl Address: 0x%08lx", (ULONG)cl);
-        fileLoggerAddDebugEntry(logMessage);
+        fileLoggerAddErrorEntry(logMessage);
         return 0;
     }
 
@@ -294,7 +291,7 @@ void mDrawToScreen(Object *obj, struct PTEImagePanelData *data)
     rp = _rp(obj);
     if (!rp)
     {
-        fileLoggerAddDebugEntry("PTEImagePanel: RastPort unavailable, cannot draw PNG");
+        fileLoggerAddErrorEntry("PTEImagePanel: RastPort unavailable, cannot draw PNG");
         return;
     }
 
@@ -320,7 +317,7 @@ void mDrawToScreen(Object *obj, struct PTEImagePanelData *data)
     Object *win = getWindowObject(obj);
     if (!win)
     {
-        fileLoggerAddDebugEntry("PTEImagePanel: Could not get window object, cannot draw");
+        fileLoggerAddErrorEntry("PTEImagePanel: Could not get window object, cannot draw");
         return;
     }
 
@@ -361,8 +358,6 @@ void mDrawToScreen(Object *obj, struct PTEImagePanelData *data)
         }
     }
 
-    fileLoggerAddDebugEntry("24-bit PNG drawing using SetRGB32 with basic BGRA colors");
-
     // For best performance, we'll use the ViewPort with SetRGB32
     if (vp)
     {
@@ -372,11 +367,9 @@ void mDrawToScreen(Object *obj, struct PTEImagePanelData *data)
     }
     else
     {
-        fileLoggerAddDebugEntry("No ViewPort available - fallback to direct drawing");
+        fileLoggerAddErrorEntry("No ViewPort available - fallback to direct drawing");
         // Fallback handled below
     }
-
-    fileLoggerAddDebugEntry("PNG drawing completed successfully");
 }
 
 BOOL mWritePixels(struct PTEImagePanelData *data, struct RastPort *rp, struct ViewPort *vp, WORD left, WORD top, WORD right, WORD bottom)

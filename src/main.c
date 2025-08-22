@@ -67,49 +67,38 @@ int main(void)
 
     if (!pteImagePanelClass)
     {
-        fileLoggerAddEntry("Failed to create PTEImagePanel class");
+        fileLoggerAddErrorEntry("Failed to create PTEImagePanel class");
         cleanup_libs();
         return RETURN_FAIL;
-    }
-    else
-    {
-        fileLoggerAddDebugEntry("PTEImagePanel class created successfully");
     }
 
     if (!pteImagePanelClass->mcc_Class)
     {
-        fileLoggerAddEntry("Failed to create PTEImagePanel class instance");
+        fileLoggerAddErrorEntry("Failed to create PTEImagePanel class instance");
         cleanup_libs();
         return RETURN_FAIL;
     }
-    else
-    {
-        char logMessage[256];
-        fileLoggerAddDebugEntry("PTEImagePanel class instance created successfully");
-        loggerFormatMessage(logMessage, "PTEImagePanel: mcc Address: 0x%08lx", (ULONG)pteImagePanelClass->mcc_Class);
-        fileLoggerAddDebugEntry(logMessage);
-    }
 
     /* PNG Test */
-    fileLoggerAddEntry("Testing PNG loading capability...");
+    fileLoggerAddInfoEntry("Testing PNG loading capability...");
     UBYTE *pngImageData = NULL;
     ImgPalette *pngPalette = NULL;
     BOOL pngLoaded = loadPNGToBitmapObject("PROGDIR:assets/ui/tank.png", &pngImageData, &pngPalette);
 
     /* PNG Test 2 */
-    fileLoggerAddEntry("Testing PNG loading capability...");
+    fileLoggerAddInfoEntry("Testing PNG loading capability...");
     UBYTE *pngImageData2 = NULL;
     ImgPalette *pngPalette2 = NULL;
     BOOL pngLoaded2 = loadPNGToBitmapObject("PROGDIR:assets/tank2.png", &pngImageData2, &pngPalette2);
 
     if (pngLoaded && pngLoaded2)
     {
-        fileLoggerAddDebugEntry("PNG image loaded successfully");
+        fileLoggerAddInfoEntry("PNG image loaded successfully");
         // We'll use this PNG data in our PTEImagePanel
     }
     else
     {
-        fileLoggerAddEntry("Failed to load PNG image");
+        fileLoggerAddErrorEntry("Failed to load PNG image");
         // Clean up in case of partial initialization
         if (pngImageData)
         {
