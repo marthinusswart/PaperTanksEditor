@@ -19,10 +19,10 @@
  * - static IPTR SAVEDS mDraw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
  *      Handles drawing the panel, including border and palette rendering.
  *
- * - static void mDrawBorder(Object *obj, struct PTEColorPalettePanelData *data)
+ * - static void mDrawBorder(Object *obj, PTEColorPalettePanelData *data)
  *      Draws a border around the color palette panel using the specified color and margin.
  *
- * - static void mDrawToScreen(Object *obj, struct PTEColorPalettePanelData *data)
+ * - static void mDrawToScreen(Object *obj, PTEColorPalettePanelData *data)
  *      Renders the color palette data to the screen, handling 24-bit color.
  *
  * - static LONG xget(Object *obj, ULONG attribute)
@@ -49,9 +49,9 @@ extern struct Library *MUIMasterBase;
 DISPATCHER(PTEColorPalettePanelDispatcher);
 static IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg);
 static IPTR SAVEDS mDraw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg);
-static void mDrawBorder(Object *obj, struct PTEColorPalettePanelData *data);
+static void mDrawBorder(Object *obj, PTEColorPalettePanelData *data);
 static LONG xget(Object *obj, ULONG attribute);
-static void mDrawToScreen(Object *obj, struct PTEColorPalettePanelData *data);
+static void mDrawToScreen(Object *obj, PTEColorPalettePanelData *data);
 
 /***********************************************************************/
 
@@ -75,7 +75,7 @@ struct MUI_CustomClass *createPTEColorPalettePanelClass(void)
     char logMessage[256];
     loggerFormatMessage(logMessage, "Dispatcher address: 0x%08lx", PTEColorPalettePanelDispatcher);
     fileLoggerAddDebugEntry(logMessage);
-    struct MUI_CustomClass *obj = MUI_CreateCustomClass(NULL, MUIC_Rectangle, NULL, sizeof(struct PTEColorPalettePanelData), (APTR)PTEColorPalettePanelDispatcher);
+    struct MUI_CustomClass *obj = MUI_CreateCustomClass(NULL, MUIC_Rectangle, NULL, sizeof(PTEColorPalettePanelData), (APTR)PTEColorPalettePanelDispatcher);
     if (!obj)
     {
         fileLoggerAddErrorEntry("PTEColorPalettePanel: Failed to create custom class");
@@ -146,7 +146,7 @@ static IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg)
     }
 
     // Store them in your instance data (assuming you have a struct like this)
-    struct PTEColorPalettePanelData *data = INST_DATA(cl, obj);
+    PTEColorPalettePanelData *data = INST_DATA(cl, obj);
     data->borderColor = borderColor;
     data->borderMargin = borderMargin;
     data->drawBorder = drawBorder;
@@ -159,7 +159,7 @@ static IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg)
 
 /***********************************************************************/
 // Function to draw border for the PTEColorPalettePanel
-static void mDrawBorder(Object *obj, struct PTEColorPalettePanelData *data)
+static void mDrawBorder(Object *obj, PTEColorPalettePanelData *data)
 {
     struct RastPort *rp;
     WORD left, top, right, bottom;
@@ -206,7 +206,7 @@ static IPTR SAVEDS mDraw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
     DoSuperMethodA(cl, obj, (Msg)msg);
 
     // Get the class data
-    struct PTEColorPalettePanelData *data = INST_DATA(cl, obj);
+    PTEColorPalettePanelData *data = INST_DATA(cl, obj);
 
     if (data->drawBorder)
     {
@@ -278,7 +278,7 @@ static LONG xget(Object *obj, ULONG attribute)
 
 /**********************************************************************/
 
-static void mDrawToScreen(Object *obj, struct PTEColorPalettePanelData *data)
+static void mDrawToScreen(Object *obj, PTEColorPalettePanelData *data)
 {
     struct RastPort *rp;
     WORD left, top, right, bottom;

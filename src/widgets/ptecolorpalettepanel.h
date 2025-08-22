@@ -43,13 +43,13 @@
 extern struct MUI_CustomClass *pteColorPalettePanelClass;
 #define PTEColorPalettePanelObject NewObject(pteColorPalettePanelClass->mcc_Class, NULL
 
-struct PTEColorPalettePanelData
+typedef struct
 {
     BYTE borderColor;
     BOOL drawBorder;
     WORD borderMargin;
     struct Img8BitPalette *colorPalette;
-};
+} PTEColorPalettePanelData;
 
 extern void initializePTEColorPalettePanel(void);
 extern struct MUI_CustomClass *createPTEColorPalettePanelClass(void);
