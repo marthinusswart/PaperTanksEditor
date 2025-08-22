@@ -40,6 +40,9 @@
 
 #include "ptecolorpalettepanel.h"
 
+#define PALETTE_SIZE 256
+#define GRID_SIZE 16
+
 /********************** Prototypes *************************/
 extern struct Library *MUIMasterBase;
 
@@ -53,6 +56,14 @@ static void mDrawToScreen(Object *obj, struct PTEColorPalettePanelData *data);
 /***********************************************************************/
 
 struct MUI_CustomClass *pteColorPalettePanelClass;
+
+typedef struct
+{
+    int x;
+    int y;
+    int width;
+    int height;
+} Square;
 
 static ULONG STACKARGS DoSuperNew(struct IClass *const cl, Object *const obj, const ULONG tags, ...)
 {
@@ -291,12 +302,6 @@ static void mDrawToScreen(Object *obj, struct PTEColorPalettePanelData *data)
     right = _mright(obj) - data->borderMargin;
     bottom = _mbottom(obj) - data->borderMargin;
 
-    // Convert width/height to right/bottom
-    left += 5;
-    top += 5;
-    // right = left + data->imageWidth - 1;
-    // bottom = top + data->imageHeight - 1;
-
     // Check bounds against drawable area
     if (right > _mright(obj) - data->borderMargin)
         right = _mright(obj) - data->borderMargin;
@@ -360,4 +365,21 @@ static void mDrawToScreen(Object *obj, struct PTEColorPalettePanelData *data)
         fileLoggerAddErrorEntry("No ViewPort available - fallback to direct drawing");
         // Fallback handled below
     }
+}
+
+BOOL createPaletteSquares(int left, int top, int squareSize, Square *squares, int numSquares)
+{
+    if (!squares || numSquares < PALETTE_SIZE || squareSize <= 0)
+        return FALSE;
+
+    for (int i = 0; i < PALETTE_SIZE; ++i)
+    {
+        int row = i / GRID_SIZE;
+        int col = i % GRID_SIZE;
+        squares[i].x = left + col * squareSize;
+        squares[i].y = top + row * squareSize;
+        squares[i].width = squareSize;
+        squares[i].height = squareSize;
+    }
+    return TRUE;
 }

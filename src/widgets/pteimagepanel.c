@@ -19,13 +19,13 @@
  * - static IPTR SAVEDS mDraw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
  *      Handles drawing the panel, including border and image rendering.
  *
- * - static void mDrawBorder(Object *obj, struct PTEImagePanelData *data)
+ * - static void mDrawBorder(Object *obj, PTEImagePanelData *data)
  *      Draws a border around the image panel using the specified color and margin.
  *
- * - static void mDrawToScreen(Object *obj, struct PTEImagePanelData *data)
+ * - static void mDrawToScreen(Object *obj, PTEImagePanelData *data)
  *      Renders PNG image data to the screen, handling 24-bit color and transparency.
  *
- * - static BOOL mWritePixels(struct PTEImagePanelData *data, struct RastPort *rp, struct ViewPort *vp, WORD left, WORD top, WORD right, WORD bottom)
+ * - static BOOL mWritePixels(PTEImagePanelData *data, struct RastPort *rp, struct ViewPort *vp, WORD left, WORD top, WORD right, WORD bottom)
  *      Writes pixel data directly to the screen, supporting 24-bit RGB and alpha transparency.
  *
  * - static LONG xget(Object *obj, ULONG attribute)
@@ -51,10 +51,10 @@ extern struct Library *MUIMasterBase;
 DISPATCHER(PTEImagePanelDispatcher);
 static IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg);
 static IPTR SAVEDS mDraw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg);
-static void mDrawBorder(Object *obj, struct PTEImagePanelData *data);
-static void mDrawToScreen(Object *obj, struct PTEImagePanelData *data);
+static void mDrawBorder(Object *obj, PTEImagePanelData *data);
+static void mDrawToScreen(Object *obj, PTEImagePanelData *data);
 static LONG xget(Object *obj, ULONG attribute);
-static BOOL mWritePixels(struct PTEImagePanelData *data, struct RastPort *rp, struct ViewPort *vp, WORD left, WORD top, WORD right, WORD bottom);
+static BOOL mWritePixels(PTEImagePanelData *data, struct RastPort *rp, struct ViewPort *vp, WORD left, WORD top, WORD right, WORD bottom);
 
 /***********************************************************************/
 
@@ -70,7 +70,7 @@ struct MUI_CustomClass *createPTEImagePanelClass(void)
     char logMessage[256];
     loggerFormatMessage(logMessage, "Dispatcher address: 0x%08lx", PTEImagePanelDispatcher);
     fileLoggerAddDebugEntry(logMessage);
-    struct MUI_CustomClass *obj = MUI_CreateCustomClass(NULL, MUIC_Rectangle, NULL, sizeof(struct PTEImagePanelData), (APTR)PTEImagePanelDispatcher);
+    struct MUI_CustomClass *obj = MUI_CreateCustomClass(NULL, MUIC_Rectangle, NULL, sizeof(PTEImagePanelData), (APTR)PTEImagePanelDispatcher);
     if (!obj)
     {
         fileLoggerAddErrorEntry("PTEImagePanel: Failed to create custom class");
@@ -163,7 +163,7 @@ static IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg)
     }
 
     // Store them in your instance data (assuming you have a struct like this)
-    struct PTEImagePanelData *data = INST_DATA(cl, obj);
+    PTEImagePanelData *data = INST_DATA(cl, obj);
     data->borderColor = borderColor;
     data->borderMargin = borderMargin;
     data->drawBorder = drawBorder;
@@ -180,7 +180,7 @@ static IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg)
 
 /***********************************************************************/
 // Function to draw border for the PTEImagePanel
-static void mDrawBorder(Object *obj, struct PTEImagePanelData *data)
+static void mDrawBorder(Object *obj, PTEImagePanelData *data)
 {
     struct RastPort *rp;
     WORD left, top, right, bottom;
@@ -227,7 +227,7 @@ static IPTR SAVEDS mDraw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
     DoSuperMethodA(cl, obj, (Msg)msg);
 
     // Get the class data
-    struct PTEImagePanelData *data = INST_DATA(cl, obj);
+    PTEImagePanelData *data = INST_DATA(cl, obj);
 
     if (data->drawBorder)
     {
@@ -302,7 +302,7 @@ static LONG xget(Object *obj, ULONG attribute)
 /**********************************************************************/
 
 /* Draw To Screen specific function optimized for 24-bit desktop environment */
-static void mDrawToScreen(Object *obj, struct PTEImagePanelData *data)
+static void mDrawToScreen(Object *obj, PTEImagePanelData *data)
 {
     struct RastPort *rp;
     WORD left, top, right, bottom;
@@ -400,7 +400,7 @@ static void mDrawToScreen(Object *obj, struct PTEImagePanelData *data)
     }
 }
 
-static BOOL mWritePixels(struct PTEImagePanelData *data, struct RastPort *rp, struct ViewPort *vp, WORD left, WORD top, WORD right, WORD bottom)
+static BOOL mWritePixels(PTEImagePanelData *data, struct RastPort *rp, struct ViewPort *vp, WORD left, WORD top, WORD right, WORD bottom)
 {
     char loggerMessage[256];
 

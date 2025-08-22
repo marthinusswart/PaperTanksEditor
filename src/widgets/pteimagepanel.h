@@ -65,8 +65,7 @@
 
 extern struct MUI_CustomClass *pteImagePanelClass;
 #define PTEImagePanelObject NewObject(pteImagePanelClass->mcc_Class, NULL
-
-struct PTEImagePanelData
+typedef struct
 {
     BYTE borderColor;
     BOOL drawBorder;
@@ -76,7 +75,7 @@ struct PTEImagePanelData
     WORD imageHeight;
     BOOL isPNG;
     BOOL hasTransparency;
-};
+} PTEImagePanelData;
 
 extern void initializePTEImagePanel(void);
 extern struct MUI_CustomClass *createPTEImagePanelClass(void);
