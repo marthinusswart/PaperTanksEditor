@@ -1,6 +1,6 @@
 #include "aboutview.h"
 
-void createAboutView(Object *app, UBYTE *pngImageData, ImgPalette *pngPalette)
+void createAboutView(Object *app, UBYTE *pngImageData)
 {
     APTR list;
     static const char IN_About[] = "Paper Tanks Editor is the editor to create new levels and scenarios for the game Paper Tanks.\

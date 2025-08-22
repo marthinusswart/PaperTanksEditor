@@ -1000,3 +1000,33 @@ static BOOL processPNGImageDataChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE 
 
     return TRUE;
 }
+
+/* Initialize a palette structure */
+void initImgPalette(ImgPalette *palette)
+{
+    if (palette)
+    {
+        palette->colorRegs = NULL;
+        palette->allocated = FALSE;
+        palette->hasTransparency = FALSE;
+        palette->transparentColor = 0;
+    }
+}
+
+/* Free resources allocated for a palette */
+void freeImgPalette(ImgPalette *palette)
+{
+    if (palette)
+    {
+        /* Only free if we allocated it */
+        if (palette->allocated && palette->colorRegs)
+        {
+            free(palette->colorRegs);
+            palette->colorRegs = NULL;
+        }
+
+        /* Reset fields */
+        palette->colorTable = NULL;
+        palette->allocated = FALSE;
+    }
+}

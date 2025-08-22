@@ -12,12 +12,15 @@
 /* Image palette structure */
 typedef struct
 {
-    UBYTE *colorRegs;       /* Raw color registers (RGB triplets - R,G,B,R,G,B,...) */
-    ULONG *colorTable;      /* ARGB color values if available */
-    BOOL allocated;         /* Whether we allocated memory for colorRegs */
-    BOOL hasTransparency;   /* Whether palette has transparency */
-    UBYTE transparentColor; /* Index of transparent color in palette */
-} ImgPalette;
+    UBYTE red8[255];
+    UBYTE green8[255];
+    UBYTE blue8[255];
+    BOOL hasTransparency;
+    UBYTE transparentR8;
+    UBYTE transparentG8;
+    UBYTE transparentB8;
+    UBYTE colorsAllocated;
+} Img8BitPalette;
 
 typedef struct
 {
@@ -28,10 +31,10 @@ typedef struct
 } PNGImage;
 
 /* Initialize a palette structure */
-void initImgPalette(ImgPalette *palette);
+void initImg8BitPalette(Img8BitPalette *palette);
 
 /* Free resources allocated for a palette */
-void freeImgPalette(ImgPalette *palette);
+void freeImg8BitPalette(Img8BitPalette *palette);
 
 /* Find the MUI window object for a given MUI object */
 Object *getWindowObject(Object *obj);

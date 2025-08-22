@@ -51,31 +51,22 @@ Object *getWindowObject(Object *obj)
 }
 
 /* Initialize a palette structure */
-void initImgPalette(ImgPalette *palette)
+void initImg8BitPalette(Img8BitPalette *palette)
 {
     if (palette)
     {
-        palette->colorRegs = NULL;
-        palette->allocated = FALSE;
+        palette->colorsAllocated = 0;
         palette->hasTransparency = FALSE;
-        palette->transparentColor = 0;
+        palette->transparentR8 = 0;
+        palette->transparentG8 = 0;
+        palette->transparentB8 = 0;
     }
 }
 
 /* Free resources allocated for a palette */
-void freeImgPalette(ImgPalette *palette)
+void freeImg8BitPalette(Img8BitPalette *palette)
 {
     if (palette)
     {
-        /* Only free if we allocated it */
-        if (palette->allocated && palette->colorRegs)
-        {
-            free(palette->colorRegs);
-            palette->colorRegs = NULL;
-        }
-
-        /* Reset fields */
-        palette->colorTable = NULL;
-        palette->allocated = FALSE;
     }
 }

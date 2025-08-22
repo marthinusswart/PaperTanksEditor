@@ -388,17 +388,12 @@ BOOL mWritePixels(struct PTEImagePanelData *data, struct RastPort *rp, struct Vi
 
                 if (data->hasTransparency)
                 {
+                    // Alpha is 10 or less.
                     if (a8 <= 10)
                     {
                         continue;
                     }
                 }
-
-                // If the pixel is transparent, skip drawing it
-                // if (isTransparent)
-                // {
-                //     continue; // Skip to the next pixel
-                // }
 
                 // Convert 8-bit RGB to 32-bit RGB required by SetRGB32
                 ULONG r32 = ((ULONG)r8 << 24) | ((ULONG)r8 << 16) | ((ULONG)r8 << 8) | r8;
@@ -406,11 +401,8 @@ BOOL mWritePixels(struct PTEImagePanelData *data, struct RastPort *rp, struct Vi
                 ULONG b32 = ((ULONG)b8 << 24) | ((ULONG)b8 << 16) | ((ULONG)b8 << 8) | b8;
 
                 // Set the color for a temporary pen in the viewport
-
-                // sprintf(loggerMessage, "Setting temporary pen color in ViewPort: R=%d, G=%d, B=%d", r32, g32, b32);
-                // fileLoggerAddDebugEntry(loggerMessage);
-                // SetRGB32(vp, 5, r32, g32, b32);
                 SetRGB32(vp, 255, r32, g32, b32);
+
                 // Draw with the temporary pen
                 SetAPen(rp, 255);
                 WritePixel(rp, px, py);

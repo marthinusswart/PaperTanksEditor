@@ -82,9 +82,8 @@ int main(void)
 
     /* PNG Test */
     fileLoggerAddInfoEntry("Testing PNG loading capability...");
-    UBYTE *pngImageData = NULL;
-    ImgPalette *pngPalette = NULL;
-    BOOL pngLoaded = loadPNGToBitmapObject2("PROGDIR:assets/ui/tank.png", &pngImageData, &pngPalette);
+    PNGImage *pngImageData = NULL;
+    BOOL pngLoaded = loadPNGToBitmapObject("PROGDIR:assets/ui/tank.png", &pngImageData);
 
     /* PNG Test 2 */
     fileLoggerAddInfoEntry("Testing PNG loading capability...");
@@ -105,11 +104,7 @@ int main(void)
             free(pngImageData);
             pngImageData = NULL;
         }
-        if (pngPalette)
-        {
-            freeImgPalette(pngPalette);
-            pngPalette = NULL;
-        }
+
         if (pngImageData2)
         {
             free(pngImageData2);
@@ -195,7 +190,7 @@ int main(void)
             running = FALSE;
             break;
         case MEN_ABOUT:
-            createAboutView(app, pngImageData, pngPalette);
+            createAboutView(app, pngImageData->data);
             break;
         }
 
@@ -210,8 +205,7 @@ int main(void)
     /* Free allocated resources */
     if (pngImageData)
         free(pngImageData);
-    if (pngPalette)
-        freeImgPalette(pngPalette);
+
     if (pngImageData2)
     {
         free(pngImageData2);

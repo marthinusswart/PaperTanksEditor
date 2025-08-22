@@ -18,6 +18,6 @@
 #include "../utils/filelogger.h"
 #include "../graphics/graphics.h"
 
-extern void createAboutView(Object *app, UBYTE *pngImageData, ImgPalette *pngPalette);
+extern void createAboutView(Object *app, UBYTE *pngImageData);
 
 #endif
