@@ -88,9 +88,8 @@ int main(void)
 
     /* PNG Test 2 */
     fileLoggerAddInfoEntry("Testing PNG loading capability...");
-    UBYTE *pngImageData2 = NULL;
-    ImgPalette *pngPalette2 = NULL;
-    BOOL pngLoaded2 = loadPNGToBitmapObject("PROGDIR:assets/tank2.png", &pngImageData2, &pngPalette2);
+    PNGImage *pngImageData2 = NULL;
+    BOOL pngLoaded2 = loadPNGToBitmapObject("PROGDIR:assets/tank2.png", &pngImageData2);
 
     if (pngLoaded && pngLoaded2)
     {
@@ -115,11 +114,6 @@ int main(void)
         {
             free(pngImageData2);
             pngImageData2 = NULL;
-        }
-        if (pngPalette2)
-        {
-            freeImgPalette(pngPalette2);
-            pngPalette2 = NULL;
         }
     }
 
@@ -154,10 +148,9 @@ int main(void)
                             PTEA_BorderColor, 1,
                             PTEA_BorderMargin, 1,
                             PTEA_DrawBorder, TRUE,
-                            PTEA_ImageData, pngImageData2,
-                            PTEA_ImageHeight, 145,
-                            PTEA_ImageWidth, 200,
-                            PTEA_ImgPalette, pngPalette2,
+                            PTEA_ImageData, pngImageData2->data,
+                            PTEA_ImageHeight, pngImageData2->height,
+                            PTEA_ImageWidth, pngImageData2->width,
                             PTEA_IsPNG, TRUE,
                         End,
                     End,
@@ -222,11 +215,6 @@ int main(void)
     {
         free(pngImageData2);
         pngImageData2 = NULL;
-    }
-    if (pngPalette2)
-    {
-        freeImgPalette(pngPalette2);
-        pngPalette2 = NULL;
     }
 
     cleanup_libs();

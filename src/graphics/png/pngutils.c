@@ -2,64 +2,49 @@
 #include "pngutils.h"
 
 /* Load PNG image with palette information */
-BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalette **outPalette)
+BOOL loadPNGToBitmapObject(CONST_STRPTR filename, PNGImage **outImage)
 {
-    if (!filename || !outImageData || !outPalette)
+    if (!filename || !outImage)
         return FALSE;
 
     unsigned char *image = NULL;
-    unsigned width = 0, height = 0;
-    unsigned error = 0;
+    unsigned int width = 0, height = 0;
+    ULONG error = 0;
 
     /* Decode PNG to RGBA */
     error = lodepng_decode32_file(&image, &width, &height, filename);
     if (error || !image)
     {
         fileLoggerAddErrorEntry("Failed to load PNG image");
-        *outImageData = NULL;
-        *outPalette = NULL;
+        *outImage = NULL;
         return FALSE;
     }
 
     /* Allocate output image data */
-    *outImageData = image;
-
-    /* Create palette from image data (extract unique colors, up to 256) */
-    ImgPalette *palette = (ImgPalette *)malloc(sizeof(ImgPalette));
-    if (!palette)
+    *outImage = (PNGImage *)malloc(sizeof(PNGImage));
+    PNGImage *_outImage = *outImage;
+    if (!_outImage)
     {
-        fileLoggerAddErrorEntry("Failed to load PNG Palette");
+        fileLoggerAddErrorEntry("Failed to allocate memory for PNGImage");
         free(image);
-        *outImageData = NULL;
-        *outPalette = NULL;
         return FALSE;
     }
-    initImgPalette(palette);
 
-    /* Build palette: scan RGBA pixels, collect unique colors */
-    ULONG maxColors = 256;
-    ULONG numColors = 0;
-    ULONG *colorTable = (ULONG *)malloc(maxColors * sizeof(ULONG));
+    _outImage->data = (UBYTE *)image;
+    _outImage->width = width;
+    _outImage->height = height;
 
-    palette->colorTable = colorTable;
-    palette->allocated = TRUE;
+    _outImage->hasTransparency = FALSE;
 
-    /* Optionally, fill colorRegs as RGB triplets */
-    numColors = 256;
-    palette->colorRegs = (UBYTE *)malloc(numColors * 3);
-    if (palette->colorRegs)
+    for (ULONG i = 0; i < width * height; i++)
     {
-        for (ULONG c = 0; c < numColors; c++)
+        if (image[i * 4 + 3] < 255)
         {
-            ULONG rgba = colorTable[c];
-            palette->colorRegs[c * 3 + 0] = (UBYTE)((rgba >> 24) & 0xFF); // R
-            palette->colorRegs[c * 3 + 1] = (UBYTE)((rgba >> 16) & 0xFF); // G
-            palette->colorRegs[c * 3 + 2] = (UBYTE)((rgba >> 8) & 0xFF);  // B
+            _outImage->hasTransparency = TRUE;
+            fileLoggerAddDebugEntry("PNG image has transparency");
+            break;
         }
     }
 
-    palette->hasTransparency = FALSE;
-
-    *outPalette = palette;
     return TRUE;
 }

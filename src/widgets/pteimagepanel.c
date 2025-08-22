@@ -65,8 +65,8 @@ IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg)
     UBYTE *imageData = NULL;
     WORD imageHeight = 0;
     WORD imageWidth = 0;
-    ImgPalette *imgPalette = NULL;
     BOOL isPNG = FALSE;
+    BOOL hasTransparency = FALSE;
 
     // Parse tag list for custom attributes
     struct TagItem *tags = msg->ops_AttrList;
@@ -107,8 +107,8 @@ IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg)
             imageWidth = (WORD)walk->ti_Data;
             break;
 
-        case PTEA_ImgPalette:
-            imgPalette = (ImgPalette *)walk->ti_Data;
+        case PTEA_HasTransparency:
+            hasTransparency = (BOOL)walk->ti_Data;
             break;
 
         case PTEA_IsPNG:
@@ -128,7 +128,7 @@ IPTR SAVEDS mNew(struct IClass *cl, Object *obj, struct opSet *msg)
     data->imageData = imageData;
     data->imageHeight = imageHeight;
     data->imageWidth = imageWidth;
-    data->imgPalette = imgPalette;
+    data->hasTransparency = hasTransparency;
     data->isPNG = isPNG;
 
     return (ULONG)obj;
@@ -273,20 +273,6 @@ void mDrawToScreen(Object *obj, struct PTEImagePanelData *data)
                         (ULONG)data->imageData, data->imageWidth, data->imageHeight);
     fileLoggerAddDebugEntry(logMessage);
 
-    // Log transparency information
-    if (data->imgPalette)
-    {
-        loggerFormatMessage(logMessage, "Image palette at: 0x%08lx, has transparency: %s, transparent color: %d",
-                            (ULONG)data->imgPalette,
-                            data->imgPalette->hasTransparency ? "YES" : "NO",
-                            data->imgPalette->transparentColor);
-        fileLoggerAddDebugEntry(logMessage);
-    }
-    else
-    {
-        fileLoggerAddDebugEntry("No palette information available for PNG");
-    }
-
     // Get RastPort
     rp = _rp(obj);
     if (!rp)
@@ -386,55 +372,42 @@ BOOL mWritePixels(struct PTEImagePanelData *data, struct RastPort *rp, struct Vi
             // Clip to drawable area
             if (px <= right && py <= bottom)
             {
-                // Calculate offset into RGB chunky data (3 bytes per pixel)
-                ULONG offset = (y * data->imageWidth + x) * 3;
+                // Calculate offset into RGB chunky data (4 bytes per pixel)
+                ULONG offset = (y * data->imageWidth + x) * 4;
                 ULONG pixelIndex = y * data->imageWidth + x;
 
-                // Get RGB components (stored as GBR)
-                UBYTE r = data->imageData[offset];     // G
-                UBYTE g = data->imageData[offset + 1]; // B
-                UBYTE b = data->imageData[offset + 2]; // R
+                // Get RGB components
+                UBYTE r8 = data->imageData[offset];     // R
+                UBYTE g8 = data->imageData[offset + 1]; // G
+                UBYTE b8 = data->imageData[offset + 2]; // B
+                UBYTE a8 = data->imageData[offset + 3]; // A
 
                 // Check if we have a transparency mask and if this pixel is transparent
                 BOOL isTransparent = FALSE;
 
-                if (data->imgPalette && data->imgPalette->hasTransparency)
+                if (data->hasTransparency)
                 {
-                    // For transparent PNGs, we need to check if this is a transparent pixel
-                    // In our current implementation, transparent pixels are marked as black (0,0,0)
-                    // But we need to be careful not to skip legitimate black pixels
-                    // A better approach would be to use a separate transparency mask
-
-                    // This is a simplified approach - only pixels that are both black AND
-                    // in images with transparency flags are considered transparent
-                    if (r == 0 && g == 0 && b == 0)
-                    {
-                        // Log this potential transparent pixel for debugging
-                        // Disabled in production to avoid log spam
-                        // char transMsg[100];
-                        // sprintf(transMsg, "Found black pixel at (%d,%d) - treating as transparent", x, y);
-                        // fileLoggerAddDebugEntry(transMsg);
-
-                        isTransparent = TRUE;
-                    }
                 }
 
                 // If the pixel is transparent, skip drawing it
-                if (isTransparent)
-                {
-                    continue; // Skip to the next pixel
-                }
+                // if (isTransparent)
+                // {
+                //     continue; // Skip to the next pixel
+                // }
 
                 // Convert 8-bit RGB to 32-bit RGB required by SetRGB32
-                ULONG r32 = ((ULONG)r << 24) | ((ULONG)r << 16) | ((ULONG)r << 8) | r;
-                ULONG g32 = ((ULONG)g << 24) | ((ULONG)g << 16) | ((ULONG)g << 8) | g;
-                ULONG b32 = ((ULONG)b << 24) | ((ULONG)b << 16) | ((ULONG)b << 8) | b;
+                ULONG r32 = ((ULONG)r8 << 24) | ((ULONG)r8 << 16) | ((ULONG)r8 << 8) | r8;
+                ULONG g32 = ((ULONG)g8 << 24) | ((ULONG)g8 << 16) | ((ULONG)g8 << 8) | g8;
+                ULONG b32 = ((ULONG)b8 << 24) | ((ULONG)b8 << 16) | ((ULONG)b8 << 8) | b8;
 
                 // Set the color for a temporary pen in the viewport
-                SetRGB32(vp, 5, r32, g32, b32);
-
+                char loggerMessage[256];
+                // sprintf(loggerMessage, "Setting temporary pen color in ViewPort: R=%d, G=%d, B=%d", r32, g32, b32);
+                // fileLoggerAddDebugEntry(loggerMessage);
+                // SetRGB32(vp, 5, r32, g32, b32);
+                SetRGB32(vp, 255, r32, g32, b32);
                 // Draw with the temporary pen
-                SetAPen(rp, 5);
+                SetAPen(rp, 255);
                 WritePixel(rp, px, py);
             }
         }

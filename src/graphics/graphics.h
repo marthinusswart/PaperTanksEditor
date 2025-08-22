@@ -19,6 +19,14 @@ typedef struct
     UBYTE transparentColor; /* Index of transparent color in palette */
 } ImgPalette;
 
+typedef struct
+{
+    UBYTE *data;          /* Pixel data (RGB or RGBA) */
+    ULONG width;          /* Width of the image */
+    ULONG height;         /* Height of the image */
+    BOOL hasTransparency; /* Whether image has transparency */
+} PNGImage;
+
 /* Initialize a palette structure */
 void initImgPalette(ImgPalette *palette);
 

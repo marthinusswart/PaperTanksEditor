@@ -10,6 +10,6 @@
 #include "../../utils/filelogger.h"
 
 /* Load PNG image with palette information */
-BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalette **outPalette);
+BOOL loadPNGToBitmapObject(CONST_STRPTR filename, PNGImage **outImage);
 
 #endif /* PNGUTILS_H */
