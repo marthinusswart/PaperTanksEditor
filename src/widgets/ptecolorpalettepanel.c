@@ -52,8 +52,9 @@ static IPTR SAVEDS mDraw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg);
 static void mDrawBorder(Object *obj, PTEColorPalettePanelData *data);
 static LONG xget(Object *obj, ULONG attribute);
 static void mDrawToScreen(Object *obj, PTEColorPalettePanelData *data);
-static void mDrawSquares(Square *squares, struct RastPort *rp, struct ViewPort *vp, WORD left, WORD top);
+static void mDrawSquares(Square *squares, struct RastPort *rp, struct ViewPort *vp);
 static BOOL createPaletteSquares(int left, int top, int squareSize, Square *squares, int numSquares);
+static WORD calculateOptimalSquareSize(Object *obj, PTEColorPalettePanelData *data);
 
 /***********************************************************************/
 
@@ -171,10 +172,10 @@ static void mDrawBorder(Object *obj, PTEColorPalettePanelData *data)
     SetAPen(rp, data->borderColor);
 
     // Calculate inset bounds
-    left = _mleft(obj) + data->borderMargin;
-    top = _mtop(obj) + data->borderMargin;
-    right = _mright(obj) - data->borderMargin;
-    bottom = _mbottom(obj) - data->borderMargin;
+    left = _mleft(obj);
+    top = _mtop(obj);
+    right = _mright(obj);
+    bottom = _mbottom(obj);
 
     // Log coordinates for debugging
     loggerFormatMessage(logMessage, "PTEColorPalettePanel: Drawing rectangle at L=%d T=%d R=%d B=%d", left, top, right, bottom);
@@ -296,11 +297,24 @@ static void mDrawToScreen(Object *obj, PTEColorPalettePanelData *data)
     right = _mright(obj) - data->borderMargin;
     bottom = _mbottom(obj) - data->borderMargin;
 
+    if (data->drawBorder)
+    {
+        left++;
+        top++;
+        right--;
+        bottom--;
+    }
+
     // Check bounds against drawable area
     if (right > _mright(obj) - data->borderMargin)
         right = _mright(obj) - data->borderMargin;
     if (bottom > _mbottom(obj) - data->borderMargin)
         bottom = _mbottom(obj) - data->borderMargin;
+
+    WORD optimalSquareSize = calculateOptimalSquareSize(obj, data);
+    char sizeMsg[64];
+    snprintf(sizeMsg, sizeof(sizeMsg), "PTEColorPalettePanel: Optimal square size calculated: %d", optimalSquareSize);
+    fileLoggerAddDebugEntry(sizeMsg);
 
     Square *squares = AllocMem(sizeof(Square) * PALETTE_SIZE, MEMF_CLEAR | MEMF_PUBLIC);
     if (!squares)
@@ -310,7 +324,7 @@ static void mDrawToScreen(Object *obj, PTEColorPalettePanelData *data)
     }
 
     // Create palette squares
-    if (!createPaletteSquares(left, top, 16, squares, PALETTE_SIZE))
+    if (!createPaletteSquares(left, top, optimalSquareSize, squares, PALETTE_SIZE))
     {
         fileLoggerAddErrorEntry("PTEColorPalettePanel: Failed to create palette squares");
         return;
@@ -334,7 +348,7 @@ static void mDrawToScreen(Object *obj, PTEColorPalettePanelData *data)
     if (vp)
     {
         fileLoggerAddDebugEntry("Using 24-bit direct RGB32 rendering with ViewPort");
-        mDrawSquares(squares, rp, vp, left, top);
+        mDrawSquares(squares, rp, vp);
         fileLoggerAddDebugEntry("Completed drawing with SetRGB32 for direct RGB rendering");
     }
     else
@@ -364,7 +378,7 @@ static BOOL createPaletteSquares(int left, int top, int squareSize, Square *squa
     return TRUE;
 }
 
-static void mDrawSquares(Square *squares, struct RastPort *rp, struct ViewPort *vp, WORD left, WORD top)
+static void mDrawSquares(Square *squares, struct RastPort *rp, struct ViewPort *vp)
 {
     if (!squares || !rp || !vp)
     {
@@ -384,4 +398,37 @@ static void mDrawSquares(Square *squares, struct RastPort *rp, struct ViewPort *
                  squares[i].x + squares[i].width - 1,
                  squares[i].y + squares[i].height - 1);
     }
+}
+
+static WORD calculateOptimalSquareSize(Object *obj, PTEColorPalettePanelData *data)
+{
+    if (!obj || !data)
+    {
+        fileLoggerAddErrorEntry("calculateOptimalSquareSize: Invalid arguments (null pointer)");
+        return 0;
+    }
+
+    // Calculate available width and height inside the border
+    WORD left = _mleft(obj) + data->borderMargin;
+    WORD top = _mtop(obj) + data->borderMargin;
+    WORD right = _mright(obj) - data->borderMargin;
+    WORD bottom = _mbottom(obj) - data->borderMargin;
+
+    WORD availableWidth = right - left + 1;
+    WORD availableHeight = bottom - top + 1;
+
+    // Calculate the maximum square size that fits a 16x16 grid
+    WORD squareWidth = availableWidth / GRID_SIZE;
+    WORD squareHeight = availableHeight / GRID_SIZE;
+
+    // Use the smaller of the two to ensure all squares fit
+    WORD optimalSize = (squareWidth < squareHeight) ? squareWidth : squareHeight;
+
+    if (optimalSize <= 0)
+    {
+        fileLoggerAddErrorEntry("calculateOptimalSquareSize: Computed non-positive square size");
+        return 0;
+    }
+
+    return optimalSize;
 }

@@ -198,10 +198,10 @@ static void mDrawBorder(Object *obj, PTEImagePanelData *data)
     SetAPen(rp, data->borderColor);
 
     // Calculate inset bounds
-    left = _mleft(obj) + data->borderMargin;
-    top = _mtop(obj) + data->borderMargin;
-    right = _mright(obj) - data->borderMargin;
-    bottom = _mbottom(obj) - data->borderMargin;
+    left = _mleft(obj);
+    top = _mtop(obj);
+    right = _mright(obj);
+    bottom = _mbottom(obj);
 
     // Log coordinates for debugging
     loggerFormatMessage(logMessage, "PTEImagePanel: Drawing rectangle at L=%d T=%d R=%d B=%d", left, top, right, bottom);
