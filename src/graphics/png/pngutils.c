@@ -40,39 +40,12 @@ BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalet
     ULONG maxColors = 256;
     ULONG numColors = 0;
     ULONG *colorTable = (ULONG *)malloc(maxColors * sizeof(ULONG));
-    if (!colorTable)
-    {
-        free(image);
-        free(palette);
-        *outImageData = NULL;
-        *outPalette = NULL;
-        return FALSE;
-    }
 
-    for (ULONG i = 0; i < width * height; i++)
-    {
-        ULONG rgba = ((ULONG)image[i * 4 + 0] << 24) | ((ULONG)image[i * 4 + 1] << 16) |
-                     ((ULONG)image[i * 4 + 2] << 8) | ((ULONG)image[i * 4 + 3]);
-        BOOL found = FALSE;
-        for (ULONG c = 0; c < numColors; c++)
-        {
-            if (colorTable[c] == rgba)
-            {
-                found = TRUE;
-                break;
-            }
-        }
-        if (!found && numColors < maxColors)
-        {
-            colorTable[numColors++] = rgba;
-        }
-    }
-
-    palette->numColors = numColors;
     palette->colorTable = colorTable;
     palette->allocated = TRUE;
 
     /* Optionally, fill colorRegs as RGB triplets */
+    numColors = 256;
     palette->colorRegs = (UBYTE *)malloc(numColors * 3);
     if (palette->colorRegs)
     {
@@ -85,19 +58,7 @@ BOOL loadPNGToBitmapObject(CONST_STRPTR filename, UBYTE **outImageData, ImgPalet
         }
     }
 
-    /* Transparency: find if any color has alpha < 255 */
     palette->hasTransparency = FALSE;
-    for (ULONG c = 0; c < numColors; c++)
-    {
-        ULONG rgba = colorTable[c];
-        UBYTE alpha = (UBYTE)(rgba & 0xFF);
-        if (alpha < 255)
-        {
-            palette->hasTransparency = TRUE;
-            palette->transparentColor = (UBYTE)c;
-            break;
-        }
-    }
 
     *outPalette = palette;
     return TRUE;

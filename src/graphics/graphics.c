@@ -55,18 +55,10 @@ void initImgPalette(ImgPalette *palette)
 {
     if (palette)
     {
-        palette->numColors = 0;
         palette->colorRegs = NULL;
-        palette->colorTable = NULL;
         palette->allocated = FALSE;
         palette->hasTransparency = FALSE;
         palette->transparentColor = 0;
-
-        /* Initialize pen mapping to identity (each pen maps to itself) */
-        for (ULONG i = 0; i < 256; i++)
-        {
-            palette->penMap[i] = i;
-        }
     }
 }
 
@@ -83,7 +75,6 @@ void freeImgPalette(ImgPalette *palette)
         }
 
         /* Reset fields */
-        palette->numColors = 0;
         palette->colorTable = NULL;
         palette->allocated = FALSE;
     }

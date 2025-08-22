@@ -230,11 +230,7 @@ BOOL loadPNGToBitmapObject2(CONST_STRPTR filename, UBYTE **outImageData, ImgPale
     /* If we have palette data and need to create a palette for output */
     if (hasPalette && imgPalette)
     {
-        ULONG numColors = paletteSize / 3;
-        if (numColors > 256)
-            numColors = 256;
-
-        imgPalette->numColors = numColors;
+        int numColors = 32;
         imgPalette->colorRegs = (UBYTE *)malloc(numColors * 3);
 
         if (imgPalette->colorRegs)
@@ -261,39 +257,6 @@ BOOL loadPNGToBitmapObject2(CONST_STRPTR filename, UBYTE **outImageData, ImgPale
                         break;
                     }
                 }
-            }
-
-            /* Direct 1:1 pen mapping */
-            for (ULONG i = 0; i < 256; i++)
-            {
-                imgPalette->penMap[i] = i < numColors ? i : 0;
-            }
-
-            *outPalette = imgPalette;
-        }
-    }
-    else if (imgPalette)
-    {
-        /* Create a default RGB ramp palette */
-        imgPalette->numColors = 32;
-        imgPalette->colorRegs = (UBYTE *)malloc(32 * 3);
-
-        if (imgPalette->colorRegs)
-        {
-            /* Create a gradient of colors */
-            for (ULONG i = 0; i < 32; i++)
-            {
-                imgPalette->colorRegs[i * 3] = (i & 0x03) * 85;            /* R */
-                imgPalette->colorRegs[i * 3 + 1] = ((i & 0x0C) >> 2) * 85; /* G */
-                imgPalette->colorRegs[i * 3 + 2] = ((i & 0x30) >> 4) * 85; /* B */
-            }
-
-            imgPalette->allocated = TRUE;
-
-            /* Direct 1:1 pen mapping */
-            for (ULONG i = 0; i < 256; i++)
-            {
-                imgPalette->penMap[i] = i % 32;
             }
 
             *outPalette = imgPalette;
@@ -965,7 +928,7 @@ static BOOL processPNGImageDataChunk(UBYTE *chunkData, ULONG chunkLength, UBYTE 
                                 for (ULONG i = 0; i < width * height; i++)
                                 {
                                     UBYTE index = unfilteredData[i];
-                                    if (index < imgPalette->numColors)
+                                    if (index < 256)
                                     {
                                         /* Get color from palette */
                                         (*outImageData)[i * 3] = imgPalette->colorRegs[index * 3];         /* R */
