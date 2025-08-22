@@ -51,15 +51,26 @@ Object *getWindowObject(Object *obj)
 }
 
 /* Initialize a palette structure */
-void initImg8BitPalette(Img8BitPalette *palette)
+void initImg8BitPalette(Img8BitPalette **palette)
 {
-    if (palette)
+    *palette = (Img8BitPalette *)malloc(sizeof(Img8BitPalette));
+    Img8BitPalette *_palette = (Img8BitPalette *)*palette;
+
+    if (_palette)
     {
-        palette->colorsAllocated = 0;
-        palette->hasTransparency = FALSE;
-        palette->transparentR8 = 0;
-        palette->transparentG8 = 0;
-        palette->transparentB8 = 0;
+        _palette->colorsAllocated = 0;
+        _palette->hasTransparency = FALSE;
+        _palette->transparentR8 = 0;
+        _palette->transparentG8 = 0;
+        _palette->transparentB8 = 0;
+
+        // Initialize palette to black
+        for (int i = 0; i < 256; i++)
+        {
+            _palette->red8[i] = 0;
+            _palette->green8[i] = 0;
+            _palette->blue8[i] = 0;
+        }
     }
 }
 

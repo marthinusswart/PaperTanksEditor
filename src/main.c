@@ -46,7 +46,6 @@ int main(void)
     BOOL running = TRUE;
     UBYTE *outImageData = NULL;
     UBYTE *outRGBImageData = NULL;
-    ImgPalette *outImgPalette = NULL;
 
     /* Initialize libraries */
     if (!init_libs())
@@ -88,7 +87,12 @@ int main(void)
     /* PNG Test 2 */
     fileLoggerAddInfoEntry("Testing PNG loading capability...");
     PNGImage *pngImageData2 = NULL;
+    Img8BitPalette *outImgPalette = NULL;
     BOOL pngLoaded2 = loadPNGToBitmapObject("PROGDIR:assets/tank2.png", &pngImageData2);
+    // if (!loadPaletteFromPNGImage32(pngImageData2, &outImgPalette))
+    // {
+    //     fileLoggerAddErrorEntry("Failed to load palette from PNG image");
+    // }
 
     if (pngLoaded && pngLoaded2)
     {

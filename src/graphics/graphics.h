@@ -12,14 +12,15 @@
 /* Image palette structure */
 typedef struct
 {
-    UBYTE red8[255];
-    UBYTE green8[255];
-    UBYTE blue8[255];
+    UBYTE red8[256];
+    UBYTE green8[256];
+    UBYTE blue8[256];
     BOOL hasTransparency;
     UBYTE transparentR8;
     UBYTE transparentG8;
     UBYTE transparentB8;
-    UBYTE colorsAllocated;
+    UWORD transparentIndex;
+    UWORD colorsAllocated;
 } Img8BitPalette;
 
 typedef struct
@@ -31,7 +32,7 @@ typedef struct
 } PNGImage;
 
 /* Initialize a palette structure */
-void initImg8BitPalette(Img8BitPalette *palette);
+void initImg8BitPalette(Img8BitPalette **palette);
 
 /* Free resources allocated for a palette */
 void freeImg8BitPalette(Img8BitPalette *palette);

@@ -18,6 +18,6 @@
 #include "../utils/filelogger.h"
 #include "graphics.h"
 
-BOOL loadPaletteFromPNGImage(PNGImage *image, Img8BitPalette **img8BitPalette);
+BOOL loadPaletteFromPNGImage32(PNGImage *image, Img8BitPalette **img8BitPalette);
 
 #endif /* IMGPALETTEUTILS_H */
