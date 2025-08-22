@@ -151,6 +151,7 @@ int main(void)
                             PTEA_ImageData, pngImageData2->data,
                             PTEA_ImageHeight, pngImageData2->height,
                             PTEA_ImageWidth, pngImageData2->width,
+                            PTEA_HasTransparency, pngImageData2->hasTransparency,
                             PTEA_IsPNG, TRUE,
                         End,
                     End,

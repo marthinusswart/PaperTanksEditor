@@ -360,6 +360,7 @@ void mDrawToScreen(Object *obj, struct PTEImagePanelData *data)
 
 BOOL mWritePixels(struct PTEImagePanelData *data, struct RastPort *rp, struct ViewPort *vp, WORD left, WORD top, WORD right, WORD bottom)
 {
+    char loggerMessage[256];
 
     // Direct GBR drawing using the actual image data
     for (WORD y = 0; y < data->imageHeight; y++)
@@ -387,6 +388,10 @@ BOOL mWritePixels(struct PTEImagePanelData *data, struct RastPort *rp, struct Vi
 
                 if (data->hasTransparency)
                 {
+                    if (a8 <= 10)
+                    {
+                        continue;
+                    }
                 }
 
                 // If the pixel is transparent, skip drawing it
@@ -401,7 +406,7 @@ BOOL mWritePixels(struct PTEImagePanelData *data, struct RastPort *rp, struct Vi
                 ULONG b32 = ((ULONG)b8 << 24) | ((ULONG)b8 << 16) | ((ULONG)b8 << 8) | b8;
 
                 // Set the color for a temporary pen in the viewport
-                char loggerMessage[256];
+
                 // sprintf(loggerMessage, "Setting temporary pen color in ViewPort: R=%d, G=%d, B=%d", r32, g32, b32);
                 // fileLoggerAddDebugEntry(loggerMessage);
                 // SetRGB32(vp, 5, r32, g32, b32);
