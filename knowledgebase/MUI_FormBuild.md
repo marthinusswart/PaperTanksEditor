@@ -1,64 +1,66 @@
-#define MenustripObject     MUI_NewObject(MUIC_Menustrip
-#define MenuObject          MUI_NewObject(MUIC_Menu
-#define MenuObjectT(name)   MUI_NewObject(MUIC_Menu,MUIA_Menu_Title,name
-#define PopmenuObject       MUI_NewObject(MUIC_Popmenu
-#define MenuitemObject      MUI_NewObject(MUIC_Menuitem
-#define WindowObject        MUI_NewObject(MUIC_Window
-#define DtpicObject         MUI_NewObject(MUIC_Dtpic
-#define ImageObject         MUI_NewObject(MUIC_Image
-#define BitmapObject        MUI_NewObject(MUIC_Bitmap
-#define BodychunkObject     MUI_NewObject(MUIC_Bodychunk
-#define PixmapObject        MUI_NewObject(MUIC_Pixmap
-#define NotifyObject        MUI_NewObject(MUIC_Notify
-#define ApplicationObject   MUI_NewObject(MUIC_Application
-#define TextObject          MUI_NewObject(MUIC_Text
-#define RectangleObject     MUI_NewObject(MUIC_Rectangle
-#define BalanceObject       MUI_NewObject(MUIC_Balance
-#define ListObject          MUI_NewObject(MUIC_List
-#define PropObject          MUI_NewObject(MUIC_Prop
-#define StringObject        MUI_NewObject(MUIC_String
-#define ScrollbarObject     MUI_NewObject(MUIC_Scrollbar
-#define ListviewObject      MUI_NewObject(MUIC_Listview
-#define RadioObject         MUI_NewObject(MUIC_Radio
-#define VolumelistObject    MUI_NewObject(MUIC_Volumelist
-#define FloattextObject     MUI_NewObject(MUIC_Floattext
-#define DirlistObject       MUI_NewObject(MUIC_Dirlist
-#define CycleObject         MUI_NewObject(MUIC_Cycle
-#define GaugeObject         MUI_NewObject(MUIC_Gauge
-#define ScaleObject         MUI_NewObject(MUIC_Scale
-#define NumericObject       MUI_NewObject(MUIC_Numeric
-#define SliderObject        MUI_NewObject(MUIC_Slider
-#define NumericbuttonObject MUI_NewObject(MUIC_Numericbutton
-#define KnobObject          MUI_NewObject(MUIC_Knob
-#define LevelmeterObject    MUI_NewObject(MUIC_Levelmeter
-#define BoopsiObject        MUI_NewObject(MUIC_Boopsi
-#define ColorfieldObject    MUI_NewObject(MUIC_Colorfield
-#define PenadjustObject     MUI_NewObject(MUIC_Penadjust
-#define ColoradjustObject   MUI_NewObject(MUIC_Coloradjust
-#define PaletteObject       MUI_NewObject(MUIC_Palette
-#define GroupObject         MUI_NewObject(MUIC_Group
-#define RegisterObject      MUI_NewObject(MUIC_Register
-#define VirtgroupObject     MUI_NewObject(MUIC_Virtgroup
-#define ScrollgroupObject   MUI_NewObject(MUIC_Scrollgroup
-#define PopstringObject     MUI_NewObject(MUIC_Popstring
-#define PopobjectObject     MUI_NewObject(MUIC_Popobject
-#define PoplistObject       MUI_NewObject(MUIC_Poplist
-#define PopaslObject        MUI_NewObject(MUIC_Popasl
-#define PendisplayObject    MUI_NewObject(MUIC_Pendisplay
-#define PoppenObject        MUI_NewObject(MUIC_Poppen
-#define AboutmuiObject      MUI_NewObject(MUIC_Aboutmui
-#define DataspaceObject     MUI_NewObject(MUIC_Dataspace
-#define ScrmodelistObject   MUI_NewObject(MUIC_Scrmodelist
-#define KeyentryObject      MUI_NewObject(MUIC_Keyentry
-#define VGroup              MUI_NewObject(MUIC_Group
-#define HGroup              MUI_NewObject(MUIC_Group,MUIA_Group_Horiz,TRUE
-#define ColGroup(cols)      MUI_NewObject(MUIC_Group,MUIA_Group_Columns,(cols)
-#define RowGroup(rows)      MUI_NewObject(MUIC_Group,MUIA_Group_Rows   ,(rows)
-#define PageGroup           MUI_NewObject(MUIC_Group,MUIA_Group_PageMode,TRUE
-#define VGroupV             MUI_NewObject(MUIC_Virtgroup
-#define HGroupV             MUI_NewObject(MUIC_Virtgroup,MUIA_Group_Horiz,TRUE
-#define ColGroupV(cols)     MUI_NewObject(MUIC_Virtgroup,MUIA_Group_Columns,(cols)
-#define RowGroupV(rows)     MUI_NewObject(MUIC_Virtgroup,MUIA_Group_Rows   ,(rows)
-#define PageGroupV          MUI_NewObject(MUIC_Virtgroup,MUIA_Group_PageMode,TRUE
-#define RegisterGroup(t)    MUI_NewObject(MUIC_Register,MUIA_Register_Titles,(t)
-#define End                 TAG_DONE)
+| alias               | VBCC Code                                              |
+| ------------------- | ------------------------------------------------------ |
+| MenustripObject     | MUI_NewObject(MUIC_Menustrip                           |
+| MenuObject          | MUI_NewObject(MUIC_Menu                                |
+| MenuObjectT(name)   | MUI_NewObject(MUIC_Menu,MUIA_Menu_Title,name           |
+| PopmenuObject       | MUI_NewObject(MUIC_Popmenu                             |
+| MenuitemObject      | MUI_NewObject(MUIC_Menuitem                            |
+| WindowObject        | MUI_NewObject(MUIC_Window                              |
+| DtpicObject         | MUI_NewObject(MUIC_Dtpic                               |
+| ImageObject         | MUI_NewObject(MUIC_Image                               |
+| BitmapObject        | MUI_NewObject(MUIC_Bitmap                              |
+| BodychunkObject     | MUI_NewObject(MUIC_Bodychunk                           |
+| PixmapObject        | MUI_NewObject(MUIC_Pixmap                              |
+| NotifyObject        | MUI_NewObject(MUIC_Notify                              |
+| ApplicationObject   | MUI_NewObject(MUIC_Application                         |
+| TextObject          | MUI_NewObject(MUIC_Text                                |
+| RectangleObject     | MUI_NewObject(MUIC_Rectangle                           |
+| BalanceObject       | MUI_NewObject(MUIC_Balance                             |
+| ListObject          | MUI_NewObject(MUIC_List                                |
+| PropObject          | MUI_NewObject(MUIC_Prop                                |
+| StringObject        | MUI_NewObject(MUIC_String                              |
+| ScrollbarObject     | MUI_NewObject(MUIC_Scrollbar                           |
+| ListviewObject      | MUI_NewObject(MUIC_Listview                            |
+| RadioObject         | MUI_NewObject(MUIC_Radio                               |
+| VolumelistObject    | MUI_NewObject(MUIC_Volumelist                          |
+| FloattextObject     | MUI_NewObject(MUIC_Floattext                           |
+| DirlistObject       | MUI_NewObject(MUIC_Dirlist                             |
+| CycleObject         | MUI_NewObject(MUIC_Cycle                               |
+| GaugeObject         | MUI_NewObject(MUIC_Gauge                               |
+| ScaleObject         | MUI_NewObject(MUIC_Scale                               |
+| NumericObject       | MUI_NewObject(MUIC_Numeric                             |
+| SliderObject        | MUI_NewObject(MUIC_Slider                              |
+| NumericbuttonObject | MUI_NewObject(MUIC_Numericbutton                       |
+| KnobObject          | MUI_NewObject(MUIC_Knob                                |
+| LevelmeterObject    | MUI_NewObject(MUIC_Levelmeter                          |
+| BoopsiObject        | MUI_NewObject(MUIC_Boopsi                              |
+| ColorfieldObject    | MUI_NewObject(MUIC_Colorfield                          |
+| PenadjustObject     | MUI_NewObject(MUIC_Penadjust                           |
+| ColoradjustObject   | MUI_NewObject(MUIC_Coloradjust                         |
+| PaletteObject       | MUI_NewObject(MUIC_Palette                             |
+| GroupObject         | MUI_NewObject(MUIC_Group                               |
+| RegisterObject      | MUI_NewObject(MUIC_Register                            |
+| VirtgroupObject     | MUI_NewObject(MUIC_Virtgroup                           |
+| ScrollgroupObject   | MUI_NewObject(MUIC_Scrollgroup                         |
+| PopstringObject     | MUI_NewObject(MUIC_Popstring                           |
+| PopobjectObject     | MUI_NewObject(MUIC_Popobject                           |
+| PoplistObject       | MUI_NewObject(MUIC_Poplist                             |
+| PopaslObject        | MUI_NewObject(MUIC_Popasl                              |
+| PendisplayObject    | MUI_NewObject(MUIC_Pendisplay                          |
+| PoppenObject        | MUI_NewObject(MUIC_Poppen                              |
+| AboutmuiObject      | MUI_NewObject(MUIC_Aboutmui                            |
+| DataspaceObject     | MUI_NewObject(MUIC_Dataspace                           |
+| ScrmodelistObject   | MUI_NewObject(MUIC_Scrmodelist                         |
+| KeyentryObject      | MUI_NewObject(MUIC_Keyentry                            |
+| VGroup              | MUI_NewObject(MUIC_Group                               |
+| HGroup              | MUI_NewObject(MUIC_Group,MUIA_Group_Horiz,TRUE         |
+| ColGroup(cols)      | MUI_NewObject(MUIC_Group,MUIA_Group_Columns,(cols)     |
+| RowGroup(rows)      | MUI_NewObject(MUIC_Group,MUIA_Group_Rows ,(rows)       |
+| PageGroup           | MUI_NewObject(MUIC_Group,MUIA_Group_PageMode,TRUE      |
+| VGroupV             | MUI_NewObject(MUIC_Virtgroup                           |
+| HGroupV             | MUI_NewObject(MUIC_Virtgroup,MUIA_Group_Horiz,TRUE     |
+| ColGroupV(cols)     | MUI_NewObject(MUIC_Virtgroup,MUIA_Group_Columns,(cols) |
+| RowGroupV(rows)     | MUI_NewObject(MUIC_Virtgroup,MUIA_Group_Rows ,(rows)   |
+| PageGroupV          | MUI_NewObject(MUIC_Virtgroup,MUIA_Group_PageMode,TRUE  |
+| RegisterGroup(t)    | MUI_NewObject(MUIC_Register,MUIA_Register_Titles,(t)   |
+| End                 | TAG_DONE)                                              |

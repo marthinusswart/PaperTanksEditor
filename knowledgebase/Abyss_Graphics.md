@@ -1,143 +1,71 @@
-https://github.com/BartmanAbyss/vscode-amiga-debug
-
 amiga-debug Visual Studio Code Extension
-One-stop Visual Studio Code Extention to compile, debug and profile Amiga C/C++ programs compiled by the bundled gcc 15.1 with the bundled WinUAE/FS-UAE and GDB.
 
-Overview
-This fully self-contained extension will help you to quickly develop demos, intros, games, etc. for the Amiga 500, 1200, 4000. It supports C and C++, however no standard library is available. It comes with advanced productivity features like debug overlay, frame profiler, graphics debugger and size profiler.
+# Amiga-Debug Visual Studio Code Extension
 
-Debugger Frame Profiler Size Profiler Graphics Debugger
+Repository: [BartmanAbyss/vscode-amiga-debug](https://github.com/BartmanAbyss/vscode-amiga-debug)
 
-Video
-Here's a video showing off all the new features of v1.1, including the frame profiler and graphics debugger: https://www.youtube.com/watch?v=gQ4tKisnr7Y
+## Overview
 
-Quick-start
-Install the extension from the Visual Studio Code Marketplace
-(recommended) install the Microsoft C/C++ extension from the Extensions tab under Recommended
-Create a new empty project folder with File > Open Folder...
-From the command palette Ctrl+Shift+P select Amiga: Init Project
-(optional, but recommended)
-either: open settings Ctrl+, and under Extensions > Amiga C/C++ Compile, Debug & Profile point Rom-paths: A500 to your Kickstart 1.3 ROM
-or: open .vscode/launch.json and point "kickstart" to your Kickstart 1.3 ROM
-Hit F5 to build and run a minimal sample project
-If you prefer C++ instead of C, just rename main.c to main.cpp
-Features
-No additional tools required. Everything is included (except Kickstart ROM ??). Ready to go make your next Amiga 500 production!
-State-of-the-art code generation by GCC with Link-Time-Optimizations (LTO) for increased performance and smaller code size
-IntelliSense for C, C++, and assembly (VASM or GAS)
-Full source-level and assembly-level debugging with callstack, breakpoints, data breakpoints (watchpoints), watches, registers, memory view with GDB-enabled WinUAE
-Fully AmigaOS compatible via included .h files
-INCBIN, INCBIN*CHIP support
-Output to debug console from WinUAE
-WinUAE warp-launch (turbo-boot)
-WinUAE warp-mode control from your Amiga project (speed up precalc during development)
-WinUAE debug overlay, full control from your Amiga project
-Frame Profiler: function-level + DMA cycles profiling (A500, A1200 (PAL) only)
-Graphics Debugger: replay a captured frame cycle by cycle and watch your bitmaps change in real-time; Visualize all blitter operations, bitmap writes, copper list, custom registers (OCS only)
-Size Profiler: profile the size of your executable by functions, data and references
-Shrinkler executable cruncher with size profiling: profile the size of your compressed executable (right-click Amiga EXE files in the explorer)
-Disassembly: Show disassembly of ELF file incl. 68000 cycle count and correlation with source code (right-click Amiga ELF files in the explorer)
-Terminal window with access to the build tools
-Extension automatically mounts executable's directory as dh1:, allowing for reading and writing files.
-How-to-use
-Amiga: View Memory, Amiga: Set Force Disassembly, Amiga: View Disassembly (Function) are available from the command palette Ctrl+Shift+P
-Use the command Amiga: Open Terminal to open a shell with the environment set to use the included tools like elf2hunk, gcc, gnumake etc. (e.g. gnumake clean)
-Frame Profiler: function-level + DMA profiling: during a debugging session, press the Profile button on the right of the debug toolbar, and 1 frame will be profiled. Press the rightmost button to profile 50 frames. Mark your WaitVBLs etc with calls to debug_start_idle() and debug_stop_idle() to show correct CPU usage under thumbnails.
-Size Profiler: profile the size of your executable: right-click an ELF file in the Explorer, and select Amiga: Profile File Size
-All the profilers write (sometimes rather large) files in your temp directory. If you're low on disk space, use Amiga: Clean Temp Files
-WinUAE debug overlay: see debug*\* calls in template project's main.c
-WinUAE:
-^ = single step, Pause = pause/resume Page-up = warp mode
-all necessary options are already configured for Amiga 500, Kickstart 1.3 (for debugging), if you want to change some things (resolution, window size, etc.) just go into the Configurations tab, select default, and hit Save
-some nifty coding helpers in the command palette Ctrl+Shift+P
-Open Gradient Master: opens the Deadliner's The Amiga Gradient Master tool to assist you creating color gradients for Copperlists).
-Open Image Tool opens the Deadliner's Image Tool to assist you converting images to different Amiga formats.
-Open Color Reducer opens the Deadliner's Color Reducer tool to assist you reducing the number of colors in images in a smart manner.
-Open BLTCON Cheat Sheet: opens the Deadliner's BLTCON Cheat Sheet tool that helps you designing Blitter operations.
-Open Amiga Hardware Reference Manual: opens the Amiga Hardware Reference Manual TOC hosted at amigadev.elowar.com.
-Supported Amiga Models
-Possible values of "config" in .vscode/launch.json:
-"A500": KS 1.3, ECS Agnus, 0.5MB Chip + 0.5MB Slow; needs Kickstart 1.3 ROM in "kickstart"
-"A1200": 68020, 2MB Chip; needs Kickstart 3.1 ROM in "kickstart"
-"A1200-FAST": A1200 with 4MB fast memory
-"A1200-030": A1200 with Blizzard 1230-IV and 32MB board memory. Requires the absolute path to the Blizzard ROM in "cpuboard".
-"A3000": A3000 (no profiler support); needs Kickstart 2.0 ROM in "kickstart"
-"A4000": 68030, 68882, 2MB Chip, 8MB FAST; needs Kickstart 3.1 ROM in "kickstart"
-Also, you can override the memory configuration using following fields (values are case-insensitive):
-"chipmem": allowed values: "256k", "512k", "1m", "1.5m" or "2m"
-"fastmem": allowed values: "0", "64k", "128k", "256k", "512k", "1m", "2m", "4m", "8m"
-"slowmem": allowed values: "0", "512k", "1m", "1.8m"
-Credits
-Code by Bartman/Abyss
-MacOS/Linux support by Peter Mackay and Graham Bates
-Testing by Pink/Abyss
-Already used in these productions
-Demos/Intros
+One-stop Visual Studio Code Extension to compile, debug, and profile Amiga C/C++ programs compiled by the bundled GCC 15.1 with the bundled WinUAE/FS-UAE and GDB.
 
-Coda by Abyss
-The Bitmap Rasters by Abyss
-Done by Abyss
-Primer by Architect
-30 Years by Crass
-Monotropic by Desire
-Bantam by Cosmic Orbs
-The Loop by Ghostown & Haujobb
-Games
+This fully self-contained extension helps you quickly develop demos, intros, games, etc. for the Amiga 500, 1200, 4000. It supports C and C++ (no standard library). Advanced productivity features include debug overlay, frame profiler, graphics debugger, and size profiler.
 
-Tiny Invaders by Abyss
-Tiny Galaga by Abyss
-Tiny Bobble by Abyss
-Tinyus by Abyss
-Wrong Way Driver by Abyss
-Tools
+**Debugger** | **Frame Profiler** | **Size Profiler** | **Graphics Debugger**
 
-AmigaKlang by Alcatraz & Haujobb
-Acknowledgements
-Thanks to all Contributors on GitHub
-Thanks to ross on EAB for helping with display fetch.
-Debugger support is based in part on Marcel Ball's Cortex-Debug extension.
-Copper Disassembly, hardware register documentation and 68000 instruction documentation is based in part on prb28's vscode-amiga-assembly extension.
-Some modifications of GCC are based on work by Stefan "Bebbo" Franke.
-Profiler visualizer is based in part on Microsoft's vscode-js-profile-visualizer extension.
-Amiga system-includes (NDK 3.9) copied from an installation of Bebbo's amiga-gcc and modified to work with GCC 8+. Originally downloaded from http://www.haage-partner.de/download/AmigaOS/NDK39.lha
-Commodore Amiga Icon by Icons8.
-The Player® 6.1A: Copyright © 1992-95 Jarno Paananen.
-P61.testmod - Module by Skylord/Sector 7
-depack_doynax.s - Lempel-Ziv decompressor by Johan "Doynax" Forslöf.
-KingCon V1.2 - Command Line Image to Big Endian Raw Converter Written by Soren Hannibal/Lemon.
-blitter_minterm.c is based on mini-qmc by Stefan Moebius.
-68k-dis.ts is based on binutils-gdb/include/opcode/m68k.h, Copyright (C) 1989-2021 Free Software Foundation, Inc. GPLv3
-This extension contains binaries of:
+## Video
 
-modified GCC 15.1.0 (patch included)
-Copyright (C) 2025 Free Software Foundation, Inc.
-This is free software; see the source for copying conditions. There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-modified GNU gdb (GDB) 17.0.50.20250202-git
-Copyright (C) 2025 Free Software Foundation, Inc.
-License GPLv3+: GNU GPL version 3 or later http://gnu.org/licenses/gpl.html
-modified WinUAE 4.9.0
-modified FS-UAE
-License GPLv2: GNU GPL Version 2 https://www.gnu.org/licenses/old-licenses/gpl-2.0
-modified Shrinkler 4.6
-Copyright 1999-2015 Aske Simon Christensen
-Modified 2020, Bartman/Abyss
-modified elf2hunk (source included)
-Copyright (c) 1995-2017, The AROS Development Team. All rights reserved.
-Modified 2018-2020, Bartman/Abyss
-GNU Make 4.2.1
-Copyright (C) 1988-2016 Free Software Foundation, Inc.
-License GPLv3+: GNU GPL version 3 or later http://gnu.org/licenses/gpl.html
-This is free software: you are free to change and redistribute it. There is NO WARRANTY, to the extent permitted by law.
-cd, EndCLI, run from Workbench 1.3
-unpacked exe2adf
-Copyright (c) 2015-2022 Bonefish/Reality. All rights reserved.
-modified VASM 1.9
-Copyright (c) 2002-2022 by Volker Barthelmann.
-see vasm-LICENSE
-Caveats
-sometimes when you're multiplying 2 WORDs together, gcc tries to use a (slow) 32-bit multiply. So if you have performance-critical multiplications, consider using the muluw and mulsw functions from gcc8_c_support.h
-Contributing
-For development, just install the latest node.js LTS, create a new directory, clone the repository git clone https://github.com/BartmanAbyss/vscode-amiga-debug.git, then install the dependencies with npm install. To build, open the directory in VS Code and hit F5. You can then test the extension without building a .vsix. To build a .vsix, npm install -g vsce (once), and then vsce package. For better testing, install the Mocha Test Explorer extension. The tests should then show up in your Testing tab.
+[v1.1 Features Demo (YouTube)](https://www.youtube.com/watch?v=gQ4tKisnr7Y)
+
+## Quick Start
+
+1. Install the extension from the Visual Studio Code Marketplace
+2. (Recommended) Install the Microsoft C/C++ extension from the Extensions tab under Recommended
+3. Create a new empty project folder with `File > Open Folder...`
+4. From the command palette <kbd>Ctrl+Shift+P</kbd> select `Amiga: Init Project`
+5. (Optional, but recommended)
+   - Open settings <kbd>Ctrl+,</kbd> and under Extensions > Amiga C/C++ Compile, Debug & Profile, set Rom-paths: A500 to your Kickstart 1.3 ROM
+   - Or: open `.vscode/launch.json` and set `"kickstart"` to your Kickstart 1.3 ROM
+6. Hit <kbd>F5</kbd> to build and run a minimal sample project
+7. If you prefer C++ instead of C, rename `main.c` to `main.cpp`
+
+## Features
+
+- No additional tools required. Everything is included (except Kickstart ROM). Ready to make your next Amiga 500 production!
+- State-of-the-art code generation by GCC with Link-Time-Optimizations (LTO) for increased performance and smaller code size
+- IntelliSense for C, C++, and assembly (VASM or GAS)
+- Full source-level and assembly-level debugging with callstack, breakpoints, data breakpoints (watchpoints), watches, registers, memory view with GDB-enabled WinUAE
+- Fully AmigaOS compatible via included `.h` files
+- `INCBIN`, `INCBIN*CHIP` support
+- Output to debug console from WinUAE
+- WinUAE warp-launch (turbo-boot)
+- WinUAE warp-mode control from your Amiga project (speed up precalc during development)
+- WinUAE debug overlay, full control from your Amiga project
+- Frame Profiler: function-level + DMA cycles profiling (A500, A1200 (PAL) only)
+- Graphics Debugger: replay a captured frame cycle by cycle and watch your bitmaps change in real-time; Visualize all blitter operations, bitmap writes, copper list, custom registers (OCS only)
+- Size Profiler: profile the size of your executable by functions, data and references
+- Shrinkler executable cruncher with size profiling: profile the size of your compressed executable (right-click Amiga EXE files in the explorer)
+- Disassembly: Show disassembly of ELF file incl. 68000 cycle count and correlation with source code (right-click Amiga ELF files in the explorer)
+- Terminal window with access to the build tools
+  modified Shrinkler 4.6
+  Copyright 1999-2015 Aske Simon Christensen
+  Modified 2020, Bartman/Abyss
+  modified elf2hunk (source included)
+  Copyright (c) 1995-2017, The AROS Development Team. All rights reserved.
+  Modified 2018-2020, Bartman/Abyss
+  GNU Make 4.2.1
+  Copyright (C) 1988-2016 Free Software Foundation, Inc.
+  License GPLv3+: GNU GPL version 3 or later http://gnu.org/licenses/gpl.html
+  This is free software: you are free to change and redistribute it. There is NO WARRANTY, to the extent permitted by law.
+  cd, EndCLI, run from Workbench 1.3
+  unpacked exe2adf
+  Copyright (c) 2015-2022 Bonefish/Reality. All rights reserved.
+  modified VASM 1.9
+  Copyright (c) 2002-2022 by Volker Barthelmann.
+  see vasm-LICENSE
+  Caveats
+  sometimes when you're multiplying 2 WORDs together, gcc tries to use a (slow) 32-bit multiply. So if you have performance-critical multiplications, consider using the muluw and mulsw functions from gcc8_c_support.h
+  Contributing
+  For development, just install the latest node.js LTS, create a new directory, clone the repository git clone https://github.com/BartmanAbyss/vscode-amiga-debug.git, then install the dependencies with npm install. To build, open the directory in VS Code and hit F5. You can then test the extension without building a .vsix. To build a .vsix, npm install -g vsce (once), and then vsce package. For better testing, install the Mocha Test Explorer extension. The tests should then show up in your Testing tab.
 
 Development (Windows)
 Here are the command-lines used to compile the external tools (We're building with MinGW on WSL on Windows 10/11 to c:\amiga-mingw\opt). Replace the 16 in make -j16 with your number of CPU cores
