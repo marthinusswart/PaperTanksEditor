@@ -13,7 +13,7 @@
 #include "../widgets/listwidgets.h"
 #include "../widgets/imagewidgets.h"
 #include "../widgets/pteimagepanel.h"
-#include "../widgets/ptecolorpalette.h"
+#include "../widgets/ptecolorpalettepanel.h"
 #include "../graphics/png/imgpngutils.h"
 #include "../utils/windowlogger.h"
 #include "../utils/filelogger.h"

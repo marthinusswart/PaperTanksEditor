@@ -17,7 +17,7 @@ void createColorPaletteView(Object *app)
                 PTEA_BorderColor, 1,
                 PTEA_BorderMargin, 0,
                 PTEA_DrawBorder, TRUE,
-                PTEA_ColorPalette, outImgPalette,
+                //PTEA_ColorPalette, outImgPalette,
             End,                  
         End,
     End;
