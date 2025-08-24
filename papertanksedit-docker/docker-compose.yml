@@ -1,6 +1,7 @@
 services:
   # AmigaOS 3.1 with VBCC (m68k target)
   vbcc-m68k:
+    container_name: papertankeditor-vbcc-m68k
     image: "walkero/docker4amigavbcc:latest-m68k"
     volumes:
       - "../:/opt/code"
